@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sys, struct, json, threading
 import logging, traceback
 import api
