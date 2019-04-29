@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"> 
+        <title>Import Image</title>
+        <script src="download.js" type="module"></script>
+        <style>
+            .container textarea {
+                resize: none;
+                border: none;
+                margin-left: 5px;
+                flex-grow: 2;
+            }
+            .container button {
+                margin: 0 2px;
+                user-select: none;
+            }
+            .container > div {
+                display: flex;
+                align-items: center;
+                margin: 5px 0;
+            }
+
+            .service {
+                width: 16px;
+                height: 16px;
+                content: url("icon/default.png")
+            }
+            .service.zerochan {
+                content: url("icon/zerochan.ico");
+            }
+            .service.danbooru {
+                content: url("icon/danbooru.ico")
+            }
+            .service.safebooru {
+                content: url("icon/safebooru.ico")
+            }
+            .service.twitter {
+                content: url("icon/twitter.ico")
+            }
+            .service.shuushuu {
+                content: url("icon/shuushuu.ico")
+            }
+
+            .status {
+                content: unset;
+                width: 18px;
+            }
+            .status.loading {
+                content: url("icon/spinner.png")
+            }
+            .status.loading ~ button {
+                pointer-events: none;
+            }
+            .status.done {
+                content: url("icon/checkmark.png")
+            }
+            .status.error {
+                content: url("icon/error.png")
+            }
+
+            #thumbnail-container {
+                width: 150px;
+                height: 150px;
+                display: inline-flex;
+                align-content: center;
+                justify-content: center;
+                background-color: gainsboro;
+                position: relative;
+            }
+            .shadow {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                box-shadow: inset 0 0 5px black;
+            }
+
+            #thumbnail {
+                object-fit: contain;
+                max-width: 100%;
+                max-height: 100%;
+            }
+            #source {
+                text-overflow: ellipsis;
+                flex-grow: 2;
+                margin-right: 5px;
+            }
+
+            .keywords {
+                cursor: text;
+                min-height: 28px;
+            }
+            .keywords label {
+                cursor: text;
+            }
+            .keywords ul {
+                margin: 0;
+                padding: 0;
+                display: inline-flex;
+                flex-wrap: wrap;
+            }
+            .keywords li {
+                overflow: hidden;
+                position: relative;
+                list-style-type: none;
+                padding: 2px;
+                margin: 5px 2px 0 2px;
+                border-radius: 4px;
+                line-height: 150%;
+            }
+            .keywords li .cross {
+                display: none;
+                position: absolute;
+                right: 0;
+                top: 0;
+                height: 100%;
+                line-height: 150%;
+                padding-right: 2px;
+                padding-left: 2px;
+                background-color: inherit;
+                cursor: pointer;
+            }
+            .keywords li:hover .cross {
+                display: block;
+            }
+            .keywords .input {
+                width: auto;
+                margin-top: 5px;
+                padding: 2px;
+            }
+
+            #keywords, #collections, #characters {
+                margin-top: 0;
+            }
+            #keywords li {
+                background-color: lightskyblue;
+            }
+            #keywords li:hover .cross {
+                box-shadow: -5px 0 5px 0 lightskyblue;
+            }
+            #collections li {
+                background-color: lightcoral;
+            }
+            #collections li:hover .cross {
+                box-shadow: -5px 0 5px 0 lightcoral;
+            }
+            #characters li {
+                background-color: lightgreen;
+            }
+            #characters li:hover .cross {
+                box-shadow: -5px 0 5px 0 lightgreen;
+            }
+
+            #meta-values {
+                margin-top: 10px;
+                text-align: right;
+                display: grid;
+                grid-template-columns: auto 1fr;
+                column-gap: 5px;
+                row-gap: 5px;
+            }
+
+            #status-text {
+                margin-left: 10px;
+                flex-grow: 2;
+                text-overflow: ellipsis;
+            }
+
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div style="align-items: stretch">
+                <div id="thumbnail-container"><img id="thumbnail" src="icon/spinner.png"><div class="shadow"></div></div>
+                <textarea id="caption" placeholder="Enter a short description of the image"></textarea>
+            </div>
+            <div><input id="source" readonly><img id="service" class="service"></div>
+            <div id="keywords" class="keywords"><label for="keywords">Keywords</label><ul><span class="input" contenteditable="true"></span></ul></div>
+            <div id="characters" class="keywords"><label for="characters">Characters</label><ul><span class="input" contenteditable="true"></span></ul></div>
+            <div id="collections" class="keywords"><label for="collections">Collections</label><ul><span class="input" contenteditable="true"></span></ul></span></div>
+            <div id="meta-values">
+                <label for="author">Author:</label>
+                <input id="author">
+                <label for="rating">Rating:</label>
+                <select id="rating">
+                    <option value="s">Safe</option>
+                    <option value="n">Nudity</option>
+                    <option value="q">Questionable</option>
+                    <option value="e">Explicit</option>
+                </select>
+            </div>
+            <div style="margin-top: 10px">
+                <img id="status-img" class="status null" style="width: 18px">
+                <span id="status-text"></span>
+                <button id="iqdb-button">IQDB</button>
+                <button id="download-button">Import</button>
+            </div>
+        </div>
+    </body>
+</html>

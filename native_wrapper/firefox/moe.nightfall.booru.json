@@ -1,0 +1,9 @@
+{
+    "name": "moe.nightfall.booru",
+    "description": "Interaction with the local python scripts to save data",
+    "type": "stdio",
+    "path": "../native-wrapper.bat",
+    "allowed_extensions": [ 
+        "cutespam@nightfall.moe"
+    ]
+}

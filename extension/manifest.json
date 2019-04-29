@@ -1,0 +1,26 @@
+{
+    "name": "Cutespam",
+    "version": "0.1",
+    "description": "Share cute drawings",
+    "permissions": [
+        "storage", "activeTab", "declarativeContent", "nativeMessaging", "tabs", "contextMenus",
+        "https://twitter.com/*"
+    ],
+    "background": {
+        "scripts": ["main.js", "cache.js", "contextmenu.js"],
+        "persistent": false
+    },
+    "page_action": {
+        "default_popup": "import.html"
+    },
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "cutespam@nightfall.moe",
+            "strict_min_version": "50.0"
+        }
+    },
+    "manifest_version": 2,
+
+    // Extension ID: ehcbpfiajfajnopkbkfmkdnonpajclnf
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvGaTfQbSrCpexcVuYnZZiCxE/VEALDlMkxoMgsiox48+6LoBD0BuwIDL6s7sP0lsRPeeEC/TPCUPFq0y3O2hSQ2UtP+UgAaNANIdAm1fPI/5ncM9EYKioo5NuuCPo89O+/k2J7GFdKHXELsjQ/1y2zrJJDjyJulMK7H2pTVAtDgj7o7Zu0KPpcEzPIbPuxg7cWwnUrkz+rPsKu6KdGzvpk0didQ4a7zVhkM4OLnR1zu9cfOoEJ3m38lvaLsgKqCx5oyrXT24dP7NZVi0xUAkQjcrH1CDLjT+DeD4cI54yhDnuQkxUQd6yH60De0EtCr31/KKS24cyQuBWbXjfaRTzQIDAQAB"
+  }

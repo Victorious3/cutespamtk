@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"> 
+        <title>Import Image</title>
+        <link rel="stylesheet" type="text/css" href="import.css">
+        <script src="css-element-queries/ElementQueries.js"></script>
+        <script src="css-element-queries/ResizeSensor.js"></script>
+        <script src="import.js" type="module"></script>
+    </head>
+    <body>
+        <div style="align-items: stretch">
+            <div id="thumbnail-container"><img id="thumbnail" src="icon/spinner.png"><div class="shadow"></div></div>
+            <textarea id="caption" placeholder="Enter a short description of the image"></textarea>
+        </div>
+        <div><input id="source" readonly><div id="service" class="service"></div></div>
+        <div id="keywords" class="keywords"><label for="keywords">Keywords</label><ul><span class="input" contenteditable="true"></span></ul></div>
+        <div id="characters" class="keywords"><label for="characters">Characters</label><ul><span class="input" contenteditable="true"></span></ul></div>
+        <div id="collections" class="keywords"><label for="collections">Collections</label><ul><span class="input" contenteditable="true"></span></ul></span></div>
+        <div class="meta-values">
+            <label for="author">Author:</label>
+            <input id="author">
+            <label for="rating">Rating:</label>
+            <select id="rating">
+                <option value="s">Safe</option>
+                <option value="n">Nudity</option>
+                <option value="q">Questionable</option>
+                <option value="e">Explicit</option>
+            </select>
+        </div>
+        <fieldset class="container">
+            <legend>[ Advanced ]</legend>
+            <div class="meta-values collapsed">
+                <label for="add-source">Source:</label>
+                <div class="autoresize"><span id="add-source" contenteditable="true"></span></div>
+                <label for="via">Via:</label>
+                <div class="autoresize"><span id="via" contenteditable="true"></span></div>
+                <label for="uid">uid:</label>
+                <input id="uid" readonly>
+            </div>
+        </fieldset>
+        <div style="margin-top: 10px">
+            <div id="status-img" class="status null" style="width: 18px"></div>
+            <span id="status-text"></span>
+            <button id="iqdb-button">IQDB</button>
+            <button id="download-button">Download</button>
+        </div>
+    </body>
+</html>
