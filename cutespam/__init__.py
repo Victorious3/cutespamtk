@@ -26,7 +26,7 @@ def find_duplicates(files):
 
     for f in files:
         try:
-            meta = meta.CuteMeta.from_file(f)
+            meta = CuteMeta.from_file(f)
         except TypeError: continue
 
         h = meta.hash
