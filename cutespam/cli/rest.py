@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
-
 import sys, struct, json, threading
 import logging, traceback
-import api
 import dataclasses
 
 from queue import Queue
 from time import sleep
+
+from cutespam import api
 
 def read_input(queue: Queue):
     while True:
@@ -56,7 +55,7 @@ def send_message(message):
     sys.stdout.write(text.encode("utf-8"))
     sys.stdout.flush()
 
-if __name__ == "__main__":
+def main():
     # On Windows, the default I/O mode is O_TEXT. Set this to O_BINARY
     # to avoid unwanted modifications of the input/output streams.
     if sys.platform == "win32":
@@ -74,4 +73,7 @@ if __name__ == "__main__":
     thread.start()
 
     process_input(queue)
+
+if __name__ == "__main__":
+    main()
    

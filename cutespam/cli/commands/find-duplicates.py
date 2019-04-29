@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
-
 import cutespam, webbrowser, argparse
 import os
 from pathlib import Path
 from PIL import Image
 from cutespam import find_duplicates, all_files_in_folders
 
-FOLDERS = [] # TODO
+DESCRIPTION = "Finds duplicate image files and generates a html page showing them"
 
 def html_output(duplicates):
     t_html = """
@@ -68,12 +66,8 @@ def html_output(duplicates):
 
     return t_html.format(tables = tables)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("outf", help = "Output file")
-    ARGS = parser.parse_args()
-
-    duplicates = find_duplicates(all_files_in_folders(FOLDERS))
+def main(ARGS):
+    duplicates = find_duplicates(all_files_in_folders(ARGS.folders))
 
     if len(duplicates) > 0:
         res = html_output(duplicates)
@@ -82,3 +76,8 @@ if __name__ == "__main__":
         webbrowser.open(ARGS.outf)
     else:
         print("No duplicates")
+
+def args(parser):
+    parser.add_argument("outf", help = "Output file")
+    parser.add_argument("folders", nargs = "*")
+    

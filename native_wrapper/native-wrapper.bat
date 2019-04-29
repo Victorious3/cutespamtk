@@ -1,4 +1,4 @@
 
 @echo off
 
-py -3 "%~dp0/../rest.py" %*
+py -3 -m cutespam.cli.rest %*

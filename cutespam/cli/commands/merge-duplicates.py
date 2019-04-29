@@ -1,73 +1,64 @@
-#!/usr/bin/env python3
-
-import os
+import os, argparse
 
 from pathlib import Path
-from cutespam import find_duplicates, all_files_in_folders, CuteMeta
-from importer import Provider, DanbooruImage, DanbooruImageFmt2
 from PIL import Image
 from functools import reduce
 from uuid import UUID, uuid4
 
-FOLDERS = [
-    #"../",
-    #"../unsourced/todo",
-    #"../from_old_phone/download/",
-    #"../from_old_phone/pictures/",
-    #"../from_old_phone/twitter/",
-    #"../redownload/",
-]
+from cutespam import find_duplicates, all_files_in_folders
+from cutespam.meta import CuteMeta
+from cutespam.providers import Provider, DanbooruImage, DanbooruImageFmt2
 
-OUT_FOLDER = "../"
+DESCRIPTION = "Finds duplicates and merges them"
 
-if __name__ == "__main__":
-    duplicates = find_duplicates(all_files_in_folders(FOLDERS))
+class SortKeyFile:
+    def __init__(self, entry):
+        self.file = entry.file
 
-    class SortKeyFile:
-        def __init__(self, entry):
-            self.file = entry.file
+    def __lt__(self, other):
+        f1 = self.file
+        f2 = other.file
 
-        def __lt__(self, other):
-            f1 = self.file
-            f2 = other.file
+        fsize1 = os.path.getsize(f1.resolve())
+        fsize2 = os.path.getsize(f2.resolve())
 
-            fsize1 = os.path.getsize(f1.resolve())
-            fsize2 = os.path.getsize(f2.resolve())
-
-            with Image.open(f1) as img_data:
-                width, height = img_data.size
-                res1 = width * height
-                format1 = img_data.format
-            with Image.open(f2) as img_data:
-                width, height = img_data.size
-                res2 = width * height
-                format2 = img_data.format
-            
-            if res1 == res2:
-                if format1 == format2:
-                    if abs(fsize1 - fsize2) < 10000:
-                        return len(str(f1)) > len(str(f2))
-                    return fsize1 < fsize2
-                else:
-                    if format1 == "PNG": return False
-                    else: return True
+        with Image.open(f1) as img_data:
+            width, height = img_data.size
+            res1 = width * height
+            format1 = img_data.format
+        with Image.open(f2) as img_data:
+            width, height = img_data.size
+            res2 = width * height
+            format2 = img_data.format
+        
+        if res1 == res2:
+            if format1 == format2:
+                if abs(fsize1 - fsize2) < 10000:
+                    return len(str(f1)) > len(str(f2))
+                return fsize1 < fsize2
             else:
-                return res1 < res2
+                if format1 == "PNG": return False
+                else: return True
+        else:
+            return res1 < res2
 
-    class SortKeyProvider:
-        def __init__(self, entry):
-            self.provider = entry.provider
-        
-        def __lt__(self, other):
-            if not self.provider: return True
-            elif not other.provider: return False
-            else: return self.provider < other.provider
-        
-    class Entry:
-        def __init__(self, file, meta):
-               self.file = file
-               self.meta = meta
-               self.provider = Provider.for_url(meta.source) if meta.source else None
+class SortKeyProvider:
+    def __init__(self, entry):
+        self.provider = entry.provider
+    
+    def __lt__(self, other):
+        if not self.provider: return True
+        elif not other.provider: return False
+        else: return self.provider < other.provider
+    
+class Entry:
+    def __init__(self, file, meta):
+        self.file = file
+        self.meta = meta
+        self.provider = Provider.for_url(meta.source) if meta.source else None
+
+def main(ARGS):
+    duplicates = find_duplicates(all_files_in_folders(ARGS.folders))
 
     for duplicte in duplicates:
         metas = [Entry(f, CuteMeta.from_file(f)) for f in duplicte]
@@ -116,4 +107,6 @@ if __name__ == "__main__":
             os.rename(best_file.resolve(), new_name.resolve())
         for f in to_delete:
             os.remove(f.resolve())
-        
+
+def args(parser):
+    parser.add_argument("folders", nargs = "*")
