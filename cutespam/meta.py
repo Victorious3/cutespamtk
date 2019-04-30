@@ -109,6 +109,10 @@ class Meta:
         self._meta.clear()
         for k, _ in self.properties():
             setattr(self, k, None)
+
+    @property
+    def filename(self):
+        return self._meta.filename
     
     @classmethod
     def tag_names(cls):

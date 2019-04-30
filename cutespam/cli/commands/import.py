@@ -17,12 +17,12 @@ from abc import abstractmethod
 from uuid import UUID, uuid4
 from textwrap import dedent
 from PIL import Image
-from imagehash import phash # Use 16
 from urllib.parse import urlparse
 from pathlib import Path
 
 from cutespam import CHUNK_SIZE, make_request
 from cutespam.meta import CuteMeta
+from cutespam.hash import hash_img
 from cutespam.providers import Provider, Other, META_PROVIDERS, UUID_PROVIDERS # TODO This shouldn't need to happen here
 
 
@@ -307,16 +307,15 @@ def main(ARGS):
 
             os.rename(tmpfile, imgfile)
 
-            log("Generating image hash for file", imgfile)
-            with Image.open(imgfile) as img_data:
-                img_hash = str(phash(img_data, hash_size=16))
-            log("Hashed", imgfile, "as", img_hash, "(phash, 16)")
-
             cute_meta = CuteMeta.from_file(imgfile)
             cute_meta.clear() # Delete all unwanted tags
+
+            log("Generating image hash for file", imgfile)
+            hash_img(cute_meta)
+            log("Hashed", imgfile, "as", cute_meta.hash, "(phash, 16)")
+
             cute_meta.read_from_dict(meta, ignore_missing_keys = True)
             cute_meta.add_characters(*meta.get("character", []))
-            cute_meta.hash = img_hash
             cute_meta.source = img
             cute_meta.source_other = source.get("src", [])
             cute_meta.source_via = source.get("via", [])
