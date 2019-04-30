@@ -131,7 +131,7 @@ class Zerochan(Provider):
     service = "zerochan"
 
     def _fetch(self):
-        response = make_request("https://www.zerochan.net/full/" + self._regm.group("id"), "GET")
+        response = make_request("https://www.zerochan.net/full/" + self._regm.group("id"), "GET") # TODO Can't access nsfw pictures
         with response as file:
             text = decode_all(file)
         
