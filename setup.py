@@ -9,7 +9,11 @@ setup (
     description = "Cutespam CLI",
     author = "Vic Nigthtfall",
     author_email = "vic@nightfall.moe",
-    packages = ["cutespam"],
+    packages = [
+        "cutespam",
+        "cutespam.cli",
+        "cutespam.cli.commands"
+    ],
     install_requires = requirements,
     entry_points = {
         "console_scripts": [
