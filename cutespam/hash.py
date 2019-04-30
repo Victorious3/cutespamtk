@@ -2,9 +2,11 @@ import atexit
 
 from imagehash import phash
 from PIL import Image
-from bintrees import FastBinaryTree
 
-class HashTree(FastBinaryTree):
+from bintrees.abctree import ABCTree
+from bintrees.bintree import Node
+
+class HashTree(ABCTree):
     def insert(self, key, value = None):
         if not value: 
             value = key
@@ -15,7 +17,7 @@ class HashTree(FastBinaryTree):
 
         bits = bin(key)
         if self._root is None:
-            self._root = self._new_node(None, None)
+            self._root = Node(None, None)
         
         node = self._root
         for bit in bits:
