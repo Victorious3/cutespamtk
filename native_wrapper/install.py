@@ -13,6 +13,7 @@ else:
     IS_ROOT = (os.getuid() == 0)
 
 def install():
+    print("Installing native wrapper for browser extension")
     if os.name == "nt":
         import winreg
         ROOT_KEY = winreg.HKEY_LOCAL_MACHINE if IS_ROOT else winreg.HKEY_CURRENT_USER
@@ -25,20 +26,23 @@ def install():
 
         winreg.CloseKey(KEY_CHROME)
         winreg.CloseKey(KEY_FF)
-        
+    print("Successfully installed cutespam")
 
 def remove():
+    print("Removing native wrapper for browser extension")
     if os.name == "nt":
         import winreg
         ROOT_KEY = winreg.HKEY_LOCAL_MACHINE if IS_ROOT else winreg.HKEY_CURRENT_USER
         winreg.DeleteKey(ROOT_KEY, REG_CHROME)
         winreg.DeleteKey(ROOT_KEY, REG_FF)
+    print("Successfully removed cutespam")
 
 if __name__ == "__main__":
-    if sys.argv[1] == "-install":
-        install()
-    elif sys.argv[1] == "-remove":
-        remove()
-    else:
-        print("Invalid arguments to install.py")
+    try:
+        if sys.argv[1] == "-install":
+            install()
+        elif sys.argv[1] == "-remove":
+            remove()
+    except Exception as e:
+        print("An error has occured during installation:", str(e))
         sys.exit(-1)
