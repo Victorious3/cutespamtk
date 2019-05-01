@@ -3,11 +3,7 @@ from PIL import Image
 from imagehash import phash
 from lzma import LZMAFile
 
-from cutespam.hash import HashTree
-
-@atexit.register
-def save_db():
-    pass
+from cutespam.hashtree import HashTree
 
 def hash_img(fp):
     with Image.open(fp) as img_data:
