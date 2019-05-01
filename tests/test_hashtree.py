@@ -37,6 +37,9 @@ def test_hash_tree_remove():
 
         for other in rndints:
             assert other in tree
+    
+    assert len(tree) == 0
+    assert tree.root.left == tree.root.right == None
 
 def test_tree_serialization():
     tree = HashTree(256)
@@ -48,3 +51,20 @@ def test_tree_serialization():
     second = list(tree2._serialize())
 
     assert first == second
+
+def test_find_hamming_distance():
+    tree = HashTree(4)
+    all_values = set([0b1111, 0b1110, 0b1011, 0b0010, 0b0001, 0b0000])
+    tree |= all_values
+
+    assert tree.find_all_hamming_distance(0b1111, 0) == set()
+    assert tree.find_all_hamming_distance(0b1111, 1) == set([0b1110, 0b1011])
+    assert tree.find_all_hamming_distance(0b1111, 2) == set([0b1110, 0b1011])
+    assert tree.find_all_hamming_distance(0b1111, 3) == set([0b1110, 0b1011, 0b0010, 0b0001])
+    assert tree.find_all_hamming_distance(0b1111, 4) == all_values - set([0b1111])
+
+    assert tree.find_all_hamming_distance(0b1011, 0) == set()
+    assert tree.find_all_hamming_distance(0b1011, 1) == set([0b1111])
+    assert tree.find_all_hamming_distance(0b1011, 2) == set([0b1111, 0b1110, 0b0010, 0b0001])
+    assert tree.find_all_hamming_distance(0b1011, 3) == all_values - set([0b1011])
+    assert tree.find_all_hamming_distance(0b1011, 4) == all_values - set([0b1011])
