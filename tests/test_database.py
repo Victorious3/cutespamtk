@@ -6,7 +6,7 @@ from cutespam.meta import CuteMeta
 from pathlib import Path
 
 HASH_FILE = Path("tests/data/hashes.txt")
-DATABASE_FILE = Path("tests/data/database.db")
+DATABASE_FILE = Path("tests/data/hashes.db")
 
 def test_write_database(data_folder):
     Path("tests/data/").mkdir(exist_ok = True) 

@@ -5,4 +5,4 @@ dist/
 *.pem
 *.egg-info
 
-tests/data/database.db
+tests/data/hashes.db
