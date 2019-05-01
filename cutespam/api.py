@@ -8,11 +8,27 @@ from typing import List
 from cutespam.providers import Provider
 from cutespam.iqdb import iqdb
 
+class APIException(Exception): pass
+
+# Make sure that we don't call random stuff
+def apifun(fun):
+    fun._apifun = True
+    return fun
+def is_apifun(fun):
+    if not callable(fun): return False
+    return getattr(fun, "_apifun", False)
+def get_apifun(name):
+    apifun = globals().get(name, None)
+    if not is_apifun(apifun):
+        raise APIException("Invalid api function " + name)
+    return apifun
+
 @dataclass
 class FetchUrlResult:
     img: str
     service: str
 
+@apifun
 def fetch_url(url) -> FetchUrlResult:
     provider = Provider.for_url(url)
     provider.fetch()
@@ -33,6 +49,7 @@ class IQDBResult:
     service: str
     src: List[str]
 
+@apifun
 def iqdb_upscale(img, threshold = 0.9, service = None):
     results = [i for i in iqdb(url = img) if i.similarity >= threshold]
     if not results:

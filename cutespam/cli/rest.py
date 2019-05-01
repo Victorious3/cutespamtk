@@ -33,15 +33,19 @@ def process_input(queue: Queue):
 def on_message(message):
     try:
         action = message["action"].replace("-", "_")
-        try:
-            apif = getattr(api, action)
-        except AttributeError:
-            send_message({"error": "Invalid action " + message["action"]})
+        apif = api.get_apifun(action)
+
+        del message["action"]
+        reply = apif(**message)
+        if isinstance(reply, dict):
+            message = reply
         else:
-            del message["action"]
-            reply = apif(**message)
-            message = reply.__dict__
-            send_message(message)
+            try:
+                message = getattr(reply, "__dict__")
+            except:
+                message = reply
+
+        send_message(message)
 
     except Exception as e:
         tb = ''.join(traceback.format_exception(etype = type(e), value = e, tb = e.__traceback__))

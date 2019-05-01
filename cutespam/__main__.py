@@ -1,3 +1,3 @@
-from cutespam.cli.cutespam import main
+from cutespam.cli import cli
 
-main()
+cli.main()

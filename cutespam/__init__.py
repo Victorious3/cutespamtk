@@ -5,6 +5,9 @@ from pathlib import Path
 
 from cutespam.meta import CuteMeta
 
+PROBE_USERAGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/73.0.3683.75 Chrome/73.0.3683.75 Safari/537.3"
+CHUNK_SIZE = 4096
+
 def partition(p, l):
     return reduce(lambda x, y: x[not p(y)].append(y) or x, l, ([], []))
 
@@ -20,7 +23,7 @@ def all_files_in_folders(folders):
             if f.name.startswith("."): continue
             if f.is_file(): yield f
 
-def find_duplicates(files):
+def find_duplicates(files): # TODO Move this elsewhere
     ALL_HASHES = {}
     duplicates = []
 
@@ -39,9 +42,6 @@ def find_duplicates(files):
             ALL_HASHES[h] = [f]
 
     return duplicates
-
-PROBE_USERAGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/73.0.3683.75 Chrome/73.0.3683.75 Safari/537.3"
-CHUNK_SIZE = 4096
 
 def decode_all(file):
     return "\n".join(b.decode("utf-8") for b in file.readlines())
@@ -66,3 +66,5 @@ def make_request(url, method, ratelimit_retry = False):
                 return make_request(request, url)
             else:
                 raise Exception("Rate limit exceeded on", url, ", skipping")
+
+from cutespam.api import *
