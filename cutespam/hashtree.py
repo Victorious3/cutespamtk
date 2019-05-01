@@ -97,8 +97,33 @@ class HashTree(MutableSet):
                 io.write(data.to_bytes(ceil(self.hash_length / 8), byteorder = "big"))
 
     @staticmethod
+    def deserialize_from_bitstream(io, hash_length):
+        def file_iterator():
+            hashlenb = ceil(hash_length / 8)
+            while True:
+                byte = io.read(1)
+                if not byte: break
+
+                nodev = NodeValue(struct.unpack("B", byte)[0])
+                if nodev is NodeValue.VALUE:
+                    yield int.from_bytes(io.read(hashlenb), byteorder = "big")
+                elif nodev is NodeValue.NONE:
+                    yield None
+                else:
+                    yield nodev
+            
+        return HashTree._deserialize(file_iterator(), hash_length)
+
+    @staticmethod
     def read_from_file(file, hash_size, compressed = True):
-        pass
+        if compressed:
+            with LZMAFile(file, "rb") as lfile:
+                tree = HashTree.deserialize_from_bitstream(lfile, hash_size)
+        else:
+            tree = HashTree.deserialize_from_bitstream(lfile, hash_size)
+
+        return tree
+
 
     def write_to_file(self, file, compressed = True):
         if compressed:
