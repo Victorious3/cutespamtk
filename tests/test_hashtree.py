@@ -1,6 +1,6 @@
 import pytest, random
 
-from cutespam.hash import HashTree
+from cutespam.hashtree import HashTree
 
 def test_hash_tree_insert():
     tree = HashTree(256)
@@ -52,7 +52,8 @@ def test_tree_serialization():
 
     assert first == second
 
-def test_find_hamming_distance():
+# Test on known trees
+def test_find_hamming_distance_simple():
     tree = HashTree(4)
     all_values = set([0b1111, 0b1110, 0b1011, 0b0010, 0b0001, 0b0000])
     tree |= all_values
@@ -68,3 +69,38 @@ def test_find_hamming_distance():
     assert tree.find_all_hamming_distance(0b1011, 2) == set([0b1111, 0b1110, 0b0010, 0b0001])
     assert tree.find_all_hamming_distance(0b1011, 3) == all_values - set([0b1011])
     assert tree.find_all_hamming_distance(0b1011, 4) == all_values - set([0b1011])
+
+# Test on random hashes
+def test_find_hamming_distance():
+    tree = HashTree(54)
+    numbers = []
+
+    def create_offset(n):
+        num = 0b000000_000000_000000_000000
+        for m in range(0, 6):   num ^= (((n & 0b0001) >> 0) & 1) << m
+        for m in range(6, 12):  num ^= (((n & 0b0010) >> 1) & 1) << m
+        for m in range(12, 18): num ^= (((n & 0b0100) >> 2) & 1) << m
+        for m in range(18, 24): num ^= (((n & 0b1000) >> 3) & 1) << m
+        return num
+
+    for i in range(0, 16):
+        num = random.getrandbits(30) << 24 | create_offset(i)
+        tree.add(num)
+        number = (num, [])
+        for m in random.sample(range(24, 54), 5):
+            num = num ^ (1 << m)
+            number[1].append(num)
+            tree.add(num)
+        numbers.append(number)
+
+    newline = "\n"
+    fmt = "054b"
+    print()
+    print("\n\n".join(f"{n[0]:{fmt}} >>>\n{newline.join(f'{o:{fmt}}' for o in n[1])}" for n in numbers))
+
+    for n in numbers:
+        find = n[0]
+        test = n[1]
+        for distance in range(0, len(test)):
+            assert tree.find_all_hamming_distance(find, distance) == set(test[:distance])
+    

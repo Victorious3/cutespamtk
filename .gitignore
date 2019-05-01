@@ -4,3 +4,5 @@ dist/
 .vscode/
 *.pem
 *.egg-info
+
+tests/data/database.db
