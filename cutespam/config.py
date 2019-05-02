@@ -8,6 +8,8 @@ class Config:
     thumbnail_size: int = 256
     thumbnail_min_filesize: int = 100
 
+    image_folder: str = "~/Pictures/Cutespam"
+
 config = Config()
 
 NAME = "Cutespam"
