@@ -4,11 +4,9 @@ import time
 
 from pathlib import Path
 
-import cutespam
+from cutespam.iqdb import iqdb as _iqdb
 from cutespam.iqdb import IQDBException
 from cutespam.meta import CuteMeta
-
-_iqdb = cutespam.iqdb.iqdb
 
 def iqdb(ARGS):
     start = time.time()

@@ -9,6 +9,7 @@ class Config:
     thumbnail_min_filesize: int = 100
 
     image_folder: str = "~/Pictures/Cutespam"
+    cache_folder: str = None
 
 config = Config()
 
@@ -41,7 +42,7 @@ def _read_config():
     if not cfgf.exists():
         cfgf.parent.mkdir(parents = True, exist_ok = True)
         with open(cfgf, "w") as ymlf:
-            yaml.safe_dump(vars(config), ymlf)
+            yaml.safe_dump(vars(config), ymlf, default_flow_style = False, sort_keys = False)
     else:
         with open(cfgf, "r") as ymlf:
             ymlo = yaml.safe_load(ymlf)

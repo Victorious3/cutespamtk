@@ -1,0 +1,8 @@
+service_port: 14400
+hash_length: 256
+
+thumbnail_size: 256
+thumbnail_min_filesize: 100
+
+image_folder: tests/data/image
+cache_folder: tests/data/cache

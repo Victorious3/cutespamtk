@@ -5,5 +5,4 @@ dist/
 *.pem
 *.egg-info
 
-config.yml
 tests/data/hashes.db
