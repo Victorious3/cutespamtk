@@ -15,7 +15,7 @@ setup (
     install_requires = requirements,
     entry_points = {
         "console_scripts": [
-            "cutespam = cutespam.cli.cutespam:main",
+            "cutespam = cutespam.cli.cli:main",
             "cutespam-rest = cutespam.cli.rest:main",
             "iqdb = cutespam.cli.iqdb:main"
         ]

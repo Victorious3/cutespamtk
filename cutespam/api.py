@@ -10,16 +10,15 @@ from cutespam.iqdb import iqdb
 
 class APIException(Exception): pass
 
+__api_functions = {}
+
 # Make sure that we don't call random stuff
-def apifun(fun):
-    fun._apifun = True
+def _apifun(fun):
+    __api_functions[fun.__name__] = fun
     return fun
-def is_apifun(fun):
-    if not callable(fun): return False
-    return getattr(fun, "_apifun", False)
-def get_apifun(name):
-    apifun = globals().get(name, None)
-    if not is_apifun(apifun):
+def _get_apifun(name):
+    apifun = __api_functions.get(name)
+    if not apifun:
         raise APIException("Invalid api function " + name)
     return apifun
 
@@ -28,7 +27,7 @@ class FetchUrlResult:
     img: str
     service: str
 
-@apifun
+@_apifun
 def fetch_url(url) -> FetchUrlResult:
     provider = Provider.for_url(url)
     provider.fetch()
@@ -49,7 +48,7 @@ class IQDBResult:
     service: str
     src: List[str]
 
-@apifun
+@_apifun
 def iqdb_upscale(img, threshold = 0.9, service = None):
     results = [i for i in iqdb(url = img) if i.similarity >= threshold]
     if not results:

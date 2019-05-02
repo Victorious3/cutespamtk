@@ -33,7 +33,7 @@ def process_input(queue: Queue):
 def on_message(message):
     try:
         action = message["action"].replace("-", "_")
-        apif = api.get_apifun(action)
+        apif = api._get_apifun(action)
 
         del message["action"]
         reply = apif(**message)

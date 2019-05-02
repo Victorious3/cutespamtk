@@ -1,5 +1,6 @@
 import pytest
 
+from cutespam.config import config
 from cutespam.hashtree import HashTree
 from cutespam.meta import CuteMeta
 
@@ -11,7 +12,7 @@ DATABASE_FILE = Path("tests/data/hashes.db")
 def test_write_database(data_folder):
     Path("tests/data/").mkdir(exist_ok = True) 
 
-    tree = HashTree(256)
+    tree = HashTree(config.hash_length)
 
     if not data_folder: 
         # reading hashes from the file
@@ -36,7 +37,7 @@ def test_read_database():
     databasef = Path(DATABASE_FILE)
 
     with open(databasef, "rb") as database:
-        tree = HashTree.read_from_file(database, 256)
+        tree = HashTree.read_from_file(database, config.hash_length)
 
     with open(HASH_FILE, "r") as hashesf:
         for h in hashesf:

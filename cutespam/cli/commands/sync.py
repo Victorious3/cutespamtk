@@ -7,6 +7,7 @@ from PIL import Image
 from io import BytesIO
 
 from cutespam import partition
+from cutespam.config import config
 from cutespam.meta import CuteMeta
 from cutespam.hash import hash_img
 
@@ -14,9 +15,6 @@ from imagehash import phash
 from uuid import uuid4, UUID
 
 DESCRIPTION = "Fills missing metadata and syncs the internal state"
-
-THUMBNAIL_SIZE = 256
-THUMBNAIL_MIN_FSIZE = 100 * 1000
 
 def main(ARGS):
     fp = Path(ARGS.file.name)
@@ -91,7 +89,7 @@ def main(ARGS):
         print("Removed", before - len(meta), "unknown tags.")
     if ARGS.thumbnail:
         fsize = os.path.getsize(fp.resolve())
-        if fsize < THUMBNAIL_MIN_FSIZE:
+        if fsize < config.thumbnail_min_filesize * 1000:
             print("Image too small for thumbnail <100kb")
         else:
             meta = cute_meta._meta
@@ -100,7 +98,7 @@ def main(ARGS):
             image = Image.open(fp)
             image.convert()
             write_tiff = image.mode == "RGBA"
-            image.thumbnail((THUMBNAIL_SIZE, THUMBNAIL_SIZE))
+            image.thumbnail((config.thumbnail_size, config.thumbnail_size))
             
             #from PIL import ImageDraw
             #draw = ImageDraw.Draw(image)
