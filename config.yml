@@ -1,4 +1,0 @@
-service_port: 14400
-
-image_folder: ~/Pictures/Cutespam/image/
-cache_folder: ~/Programming/cutespamtk/local/
