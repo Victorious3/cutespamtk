@@ -16,7 +16,7 @@ In either case, clone the repository:
 ```bash
 git clone https://github.com/Victorious3/cutespamtk
 ```
-Or download it here [https://github.com/Victorious3/cutespamtk/archive/master.zip]() and unpack the zip folder.
+Or download it here [https://github.com/Victorious3/cutespamtk/archive/master.zip](https://github.com/Victorious3/cutespamtk/archive/master.zip) and unpack the zip folder.
 
 ### CLI
 ```bash
@@ -25,7 +25,7 @@ pip install -e ./cutespamtk --user
 You should be able to use `cutespam` and `iqdb` from the command line now
 
 #### Note for Windows:
-If you are on Windows then installing `py3exiv2` is going to fail. For instructions to fix this error consult [py3exiv2-WINDOWS/readme.txt]().
+If you are on Windows then installing `py3exiv2` is going to fail. For instructions to fix this error consult [py3exiv2-WINDOWS/readme.txt](py3exiv2-WINDOWS/readme.txt).
 
 ### Browser Extension
 When you have successfully installed the cli you can go ahead and install the browser extension.
@@ -46,4 +46,4 @@ For removing it again, run the same command with `-remove` instead of `-install`
 
 The extension works on both Windows and Linux and has been tested with Chrome and Firefox. It probably works with Opera and Edge as well but for that you need to figure out how to add native messaging hosts to those browsers and install it yourself. Same if you are using Firefox on Linux, my script currently doesn't handle that case. 
 
-Afer you've installed the native messaging host you just need to load the unpackaged extension. For Chrome this means going to [chrome://extensions/](), enabling developer mode and loading the folder `./cutespamtk/extension`. Instructions for other browsers will vary.
+Afer you've installed the native messaging host you just need to load the unpackaged extension. For Chrome this means going to [chrome://extensions/](chrome://extensions/), enabling developer mode and loading the folder `./cutespamtk/extension`. Instructions for other browsers will vary.
