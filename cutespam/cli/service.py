@@ -1,8 +1,12 @@
 from xmlrpc.server import SimpleXMLRPCServer
 
-from cutespam import config
+from cutespam import db
+from cutespam.config import config
 from cutespam.hashtree import HashTree
 
-__last_updated = 0
+db.init_db()
 
-server = SimpleXMLRPCServer(("localhost", config.SERVICE_PORT))
+server = SimpleXMLRPCServer(("localhost", config.service_port))
+for f in db._functions:
+    server.register_function(f)
+server.serve_forever()

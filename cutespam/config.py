@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 
 @dataclass
 class Config:
@@ -8,8 +9,13 @@ class Config:
     thumbnail_size: int = 256
     thumbnail_min_filesize: int = 100
 
-    image_folder: str = "~/Pictures/Cutespam"
-    cache_folder: str = None
+    useragent: str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/73.0.3683.75 Chrome/73.0.3683.75 Safari/537.3"
+    download_chunk_size: int = 4096
+
+    image_folder: Path = "~/Pictures/Cutespam"
+    cache_folder: Path = None
+
+    tag_regex: str = r"[!-)+-9;-~]+"
 
 config = Config()
 
@@ -21,8 +27,6 @@ IS_DEV = None # are we running a development version?
 def _read_config():
     import appdirs
     import yaml
-
-    from pathlib import Path
 
     global IS_DEV
 
@@ -37,7 +41,7 @@ def _read_config():
         cfgf = basef / cfgf_name
     else:
         # now look inside the config directory for the system
-        cfgf = Path(appdirs.user_config_dir(NAME, ORG, roaming = True)) / cfgf_name
+        cfgf = Path(appdirs.user_config_dir(NAME, ORG)) / cfgf_name
 
     if not cfgf.exists():
         cfgf.parent.mkdir(parents = True, exist_ok = True)
@@ -49,4 +53,15 @@ def _read_config():
             if ymlo:
                 vars(config).update(ymlo)
 
+    # Sanitize values
+    if not config.cache_folder:
+        config.cache_folder = appdirs.user_cache_dir()
+
+    config.image_folder = Path(config.image_folder).expanduser()
+    config.image_folder.mkdir(parents = True, exist_ok = True)
+    config.cache_folder = Path(config.cache_folder).expanduser()
+    config.cache_folder.mkdir(parents = True, exist_ok = True)
+
+    config.tag_regex = config.tag_regex.replace("'", "\\'").replace('"', '\\"')
+    
 _read_config()

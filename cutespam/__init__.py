@@ -4,9 +4,7 @@ from functools import reduce
 from pathlib import Path
 
 from cutespam.meta import CuteMeta
-
-PROBE_USERAGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/73.0.3683.75 Chrome/73.0.3683.75 Safari/537.3"
-CHUNK_SIZE = 4096
+from cutespam.config import config
 
 def partition(p, l):
     return reduce(lambda x, y: x[not p(y)].append(y) or x, l, ([], []))
@@ -48,14 +46,14 @@ def decode_all(file):
 
 def make_request(url, method, ratelimit_retry = False):
     try:
-        request = urllib.request.Request(url, headers = {'User-Agent': PROBE_USERAGENT})
+        request = urllib.request.Request(url, headers = {'User-Agent': config.useragent})
         request.get_method = lambda: method
         response = urllib.request.urlopen(request)
         return response
     except urllib.error.HTTPError as e:
         if e.code == 429:
             headers = response.info().headers
-            if "Retry-After" in headers:
+            if "Retry-After" in headers: 
                 seconds = headers["Retry-After"] + 10
             else:
                 seconds = 120

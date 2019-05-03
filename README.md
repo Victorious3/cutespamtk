@@ -32,12 +32,12 @@ When you have successfully installed the cli you can go ahead and install the br
 
 It needs to communicate with `cutespam` so you need to install a native messaging host first.
 ```bash
-./cutespamtk/native_wrapper.py -install
+./cutespamtk/native_wrapper/install.py -install
 ```
 
 Or if you are on Windows:
 ```bash
-py -3 ./cutespamtk/native_wrapper.py -install
+py -3 \cutespamtk\native_wrapper\install.py -install
 ```
 This is going to add a few registry keys, look at the script if you are curious about what it does.
 

@@ -5,4 +5,9 @@ dist/
 *.pem
 *.egg-info
 
+# local data folder
+local/
+# config file
+config.yml
+# test data
 tests/data/hashes.db

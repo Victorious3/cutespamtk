@@ -6,6 +6,7 @@ from uuid import uuid4, UUID
 from datetime import datetime
 from textwrap import indent
 from pathlib import Path
+from enum import Enum
 
 class _JSONEncoder(json.JSONEncoder):
     def default(self, obj): # pylint: disable=E0202
@@ -96,6 +97,8 @@ class Meta:
                     v = str(v.hex) # TODO factor out
                 elif isinstance(v, set):
                     v = list(v)
+                elif isinstance(v, Enum):
+                    v = v.value
                 if not isinstance(v, list):
                     v = [v]
                 self._meta[tag.name] = tag.tag_type(tag.name, v)
@@ -141,6 +144,12 @@ class Meta:
         meta.read()
         return cls.from_meta(meta)
 
+class Rating(Enum):
+    Safe = "s"
+    Nudity = "n"
+    Questionable = "q"
+    Explicit = "e"
+
 class CuteMeta(Meta):
     uid: UUID          = Tag("Iptc.Envelope.UNO")                  # unique id for an image file
     hash: str          = Tag("Iptc.Envelope.ProductId")            # image hash. 32 bit whash
@@ -151,7 +160,7 @@ class CuteMeta(Meta):
     source: str        = Tag("Iptc.Application2.Source")           # primary source url, image file
     group_id: UUID     = Tag("Iptc.Application2.FixtureId")        # group id, same as the uid of the first image in that group
     collections: set   = Tag("Iptc.Application2.SuppCategory")     # repeated, collections of images
-    rating: str        = Tag("Iptc.Application2.Urgency")          # Rating of the image, ["s", "n", "q", "e"] TODO: Validate
+    rating: Rating     = Tag("Iptc.Application2.Urgency")          # Rating of the image, ["s", "n", "q", "e"] TODO: Validate
     
     date: datetime     = Tag("Xmp.dc.date")        # Timestamp of when the image was imported
     source_other: set  = Tag("Xmp.dc.publisher")   # list of urls where the image is published
