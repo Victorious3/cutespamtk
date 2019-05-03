@@ -139,12 +139,12 @@ def init_db():
                 """, [(meta.uid, collection) for collection in meta.collections])
 
         __db.commit()
-        with open(hashdbf, "w") as hashdbfp:
+        with open(hashdbf, "wb") as hashdbfp:
             log.info("Writing to file...")
             __hashes.write_to_file(hashdbf)
 
     else:
-        with open(hashdbf, "r") as hashdbfp:
+        with open(hashdbf, "rb") as hashdbfp:
             log.info('Loading hashes from cached file "%s"', hashdbf)
             __hashes = HashTree.read_from_file(hashdbfp, config.hash_length)
 
