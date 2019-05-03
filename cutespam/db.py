@@ -70,7 +70,7 @@ def init_db():
             author TEXT,
             source TEXT,
             group_id UUID,
-            date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            date DATETIME not null DEFAULT CURRENT_TIMESTAMP,
             rating Rating,
             source_other PSet,
             source_via PSet
@@ -105,9 +105,9 @@ def init_db():
 
             __db.execute(f"""
                 INSERT INTO Metadata (
-                    uid, hash, caption, author, source, group_id, date, rating, source_other, source_via
+                    uid, hash, caption, author, source, group_id, rating, source_other, source_via
                 ) VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?
                 )""", (
                     meta.uid, 
                     meta.hash, 
@@ -115,12 +115,15 @@ def init_db():
                     meta.author,
                     meta.source, 
                     meta.group_id,
-                    meta.date, 
                     meta.rating, 
                     meta.source_other, 
                     meta.source_via
                 )
             )
+            if meta.date:
+                __db.execute("""
+                    UPDATE Metadata SET date = ? WHERE uid is ?
+                """, (meta.date, meta.uid))
 
             if meta.keywords:
                 __db.executemany(f"""
