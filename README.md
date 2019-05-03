@@ -58,4 +58,4 @@ For removing it again, run the same command with `-remove` instead of `-install`
 
 The extension works on both Windows and Linux and has been tested with Chrome and Firefox. It probably works with Opera and Edge as well but for that you need to figure out how to add native messaging hosts to those browsers and install it yourself. Same if you are using Firefox on Linux, my script currently doesn't handle that case. 
 
-Afer you've installed the native messaging host you just need to load the unpackaged extension. For Chrome this means going to [chrome://extensions/](chrome://extensions/), enabling developer mode and loading the folder `./cutespamtk/extension`. Instructions for other browsers will vary.
+After you've installed the native messaging host you just need to load the unpackaged extension. For Chrome this means going to [chrome://extensions/](chrome://extensions/), enabling developer mode and loading the folder `./cutespamtk/extension`. Instructions for other browsers will vary.
