@@ -27,6 +27,18 @@ You should be able to use `cutespam` and `iqdb` from the command line now
 #### Note for Windows:
 If you are on Windows then installing `py3exiv2` is going to fail. For instructions to fix this error consult [py3exiv2-WINDOWS/readme.txt](py3exiv2-WINDOWS/readme.txt).
 
+When you run the CLI for the first time (consult `cutespam -h`) it will create a file called `config.yml` in the main project folder. You can leave most of the settings alone, but two of them are going to be important for you:
+```yaml
+image_folder: ~/Pictures/Cutespam
+cache_folder: null
+```
+`image_folder` sets the folder where the images are going to be saved.
+
+`cache_folder` controls where the database and related info are going to be used. 
+
+If you leave this setting at null or remove the entry altogether, it is going to use the appropriate cache directory for your system. 
+On Windows that might be `%LOCALAPPDATA%\Nightfall\Cutespam\Cache`, for Linux its going to use `~/.cache/Cutespam/`
+
 ### Browser Extension
 When you have successfully installed the cli you can go ahead and install the browser extension.
 
