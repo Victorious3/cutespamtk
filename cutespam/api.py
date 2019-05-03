@@ -7,6 +7,7 @@ from typing import List
 
 from cutespam.providers import Provider
 from cutespam.iqdb import iqdb
+from cutespam.config import config
 
 class APIException(Exception): pass
 
@@ -92,3 +93,11 @@ def iqdb_upscale(img, threshold = 0.9, service = None):
     result = IQDBResult(img = img, src = list(src), service = service)
     result.__dict__.update(meta)
     return result
+
+@_apifun
+def get_config():
+    return config
+
+@_apifun
+def set_config(**kwargs):
+    vars(config).update(kwargs)

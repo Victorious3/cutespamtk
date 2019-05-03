@@ -20,7 +20,8 @@ from PIL import Image
 from urllib.parse import urlparse
 from pathlib import Path
 
-from cutespam import CHUNK_SIZE, make_request
+from cutespam import make_request
+from cutespam.config import config
 from cutespam.meta import CuteMeta
 from cutespam.hash import hash_img
 from cutespam.providers import Provider, Other, META_PROVIDERS, UUID_PROVIDERS # TODO This shouldn't need to happen here
@@ -294,13 +295,13 @@ def main(ARGS):
                 log("%s is too big! You specified a maximum size of %d MB, file is %.2f MB" % (img, ARGS.max_filesize, size_mb))
                 return
             
-            total_chunks = math.ceil(size / CHUNK_SIZE)
+            total_chunks = math.ceil(size / config.download_chunk_size)
             with response as stream:
                 with open(tmpfile, "wb") as outf:
                     log("Starting download of", img)
                     for _ in atpbar.atpbar(range(total_chunks), name = img):
                     #for _ in range(total_chunks):
-                        chunk = stream.read(CHUNK_SIZE)
+                        chunk = stream.read(config.download_chunk_size)
                         if not chunk:
                             break
                         outf.write(chunk)

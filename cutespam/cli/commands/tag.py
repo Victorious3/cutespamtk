@@ -30,8 +30,9 @@ def main(ARGS):
         curr_v = getattr(cute_meta, tag)   
         if curr_v and issubclass(tpe, (list, set)):
             if not yn_choice("You are about to overwrite multiple values, proceed?"): return
-
-        setattr(cute_meta, tag, val)
+        
+        # Make sure that we can convert into it!
+        setattr(cute_meta, tag, tpe(val))
     elif ARGS.subcommand == "delete":
         setattr(cute_meta, tag, None)
     elif ARGS.subcommand == "add":
