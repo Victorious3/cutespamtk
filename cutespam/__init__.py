@@ -64,5 +64,3 @@ def make_request(url, method, ratelimit_retry = False):
                 return make_request(request, url)
             else:
                 raise Exception("Rate limit exceeded on", url, ", skipping")
-
-from cutespam.api import *

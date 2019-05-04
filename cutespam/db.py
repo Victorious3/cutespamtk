@@ -1,8 +1,7 @@
-import sqlite3, atexit, re, json, sys
+import sqlite3, atexit, re, json, sys, rpyc
 
 from enum import Enum
 from uuid import UUID
-from xmlrpc.client import ServerProxy
 from threading import Thread
 from pathlib import Path
 
@@ -12,28 +11,34 @@ from cutespam.meta import CuteMeta, Rating
 
 import logging
 
+# Type conversions
 sqlite3.register_adapter(UUID, lambda uid: str(uid.hex))
-sqlite3.register_converter("UUID", lambda v: UUID(v))
+sqlite3.register_converter("UUID", lambda v: UUID(hex = v.decode()))
 sqlite3.register_adapter(Rating, lambda enum: enum.value)
-sqlite3.register_converter("Rating", lambda v: Rating(v))
+sqlite3.register_converter("Rating", lambda v: Rating(v.decode()))
 sqlite3.register_adapter(set, lambda s: json.dumps(list(s)))
-sqlite3.register_converter("PSet", lambda v: set(json.loads(v)))
+sqlite3.register_converter("PSet", lambda v: set(json.loads(v.decode())))
 
 log = logging.Logger("db")
 log.addHandler(logging.StreamHandler(sys.stdout))
 
-__hashes: HashTree
-__db: sqlite3.Connection
+__hashes: HashTree = None
+__db: sqlite3.Connection = None
+__rpccon = None
 
-__rpccon: ServerProxy
-_functions = []
+_functions = {}
 def dbfun(fun):
     def wrapper(*args, **kwargs):
         global __rpccon
         if __rpccon is None:
-            try: __rpccon = ServerProxy(f"http://localhost:{config.service_port}/", use_builtin_types = True)
+            try: 
+                __rpccon = rpyc.connect("localhost", config.service_port, config = {
+                    "allow_public_attrs": True
+                }).root
             except: 
                 __rpccon = False
+                log.warn("No database service running, please consider starting it by running cutespam-db in a separate process or setting it up as a service with your system.")
+                log.warn("Loading the database takes a long time but it makes the requests a lot faster.")
                 init_db()
         
         if __rpccon:
@@ -41,7 +46,7 @@ def dbfun(fun):
         else:
             return fun(*args, **kwargs)
 
-    _functions.append(fun)
+    _functions[fun.__name__] = fun
     return wrapper
 
 def regexp(expr, item):
@@ -59,12 +64,16 @@ def init_db():
         metadbf.touch(exist_ok = True)
         refresh_cache = True
 
-    log.info("Setting up database %s", metadbf)
-    __db = sqlite3.connect(str(metadbf))
+    log.info('Setting up database "%s"', metadbf)
+
+    global __db
+    __db = sqlite3.connect(str(metadbf), detect_types = sqlite3.PARSE_DECLTYPES)
     __db.create_function("REGEXP", 2, regexp)
+    __db.row_factory = sqlite3.Row
     __db.executescript(f"""
         CREATE TABLE IF not EXISTS Metadata (
             uid UUID PRIMARY KEY not null,
+            last_updated DATETIME not null DEFAULT CURRENT_TIMESTAMP,
             hash TEXT not null,
             caption TEXT,
             author TEXT,
@@ -145,12 +154,14 @@ def init_db():
 
     else:
         with open(hashdbf, "rb") as hashdbfp:
-            log.info('Loading hashes from cached file "%s"', hashdbf)
+            log.info('Loading hashes from cache "%s"', hashdbf)
             __hashes = HashTree.read_from_file(hashdbfp, config.hash_length)
 
     log.info("Done!")
-    listener = Thread(target = listen_for_file_changes, daemon = True)
-    listener.start()
+    db_listener = Thread(target = listen_for_db_changes, daemon = True)
+    file_listener = Thread(target = listen_for_file_changes, daemon = True)
+    db_listener.start()
+    file_listener.start()
 
     def save_db():
         __db.commit()
@@ -162,9 +173,50 @@ __last_updated = 0
 def listen_for_file_changes():
     pass
 
-def sync_metadata(cute_meta):
+def listen_for_db_changes():
+    pass
+
+def filename_for_uid(uid):
+    if isinstance(uid, str):
+        uid = UUID(str)
+
+    filename = config.image_folder / str(uid)
+    filename = filename.with_suffix(".jpg")
+    if filename.exists(): return filename
+    filename = filename.with_suffix(".png")
+    if filename.exists(): return filename
+    filename = filename.with_suffix(".jpeg")
+    if filename.exists(): return filename
+    
+    raise FileNotFoundError("No file for uuid %s found", uid)
+
+@dbfun
+def get_tab_complete_uids(uidstr: str):
+    uidstr = uidstr.replace("-", "")
+    """ Returns a list of tab completions for a starting uid """
+    uids = __db.execute("select uid from Metadata where uid like ?", (uidstr + "%",)).fetchall()
+    return [uid[0] for uid in uids]
+
+@dbfun
+def get_meta(uid: UUID):
+    meta = CuteMeta(uid = uid, filename = filename_for_uid(uid))
+    # uid, hash, caption, author, source, group_id, rating, source_other, source_via
+    res = __db.execute("select * from Metadata where uid is ?", (str(uid.hex),)).fetchone()
+    for name, v in zip(res.keys(), res):
+        setattr(meta, name, v)
+    return meta
+
+@dbfun
+def save_meta(meta: CuteMeta):
+    pass
+
+@dbfun
+def notify_metadata_change(cute_meta: CuteMeta):
     pass
 
 @dbfun
 def find_similar_images(uid, threshold, limit = 10):
     """ returns a list of uids for similar images for an image/uid """
+    if isinstance(uid, str):
+        uid = UUID(str)
+    

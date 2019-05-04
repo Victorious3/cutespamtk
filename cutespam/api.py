@@ -14,10 +14,10 @@ class APIException(Exception): pass
 __api_functions = {}
 
 # Make sure that we don't call random stuff
-def _apifun(fun):
+def apifun(fun):
     __api_functions[fun.__name__] = fun
     return fun
-def _get_apifun(name):
+def get_apifun(name):
     apifun = __api_functions.get(name)
     if not apifun:
         raise APIException("Invalid api function " + name)
@@ -28,7 +28,7 @@ class FetchUrlResult:
     img: str
     service: str
 
-@_apifun
+@apifun
 def fetch_url(url) -> FetchUrlResult:
     provider = Provider.for_url(url)
     provider.fetch()
@@ -49,7 +49,7 @@ class IQDBResult:
     service: str
     src: List[str]
 
-@_apifun
+@apifun
 def iqdb_upscale(img, threshold = 0.9, service = None):
     results = [i for i in iqdb(url = img) if i.similarity >= threshold]
     if not results:
@@ -94,10 +94,10 @@ def iqdb_upscale(img, threshold = 0.9, service = None):
     result.__dict__.update(meta)
     return result
 
-@_apifun
+@apifun
 def get_config():
     return config
 
-@_apifun
+@apifun
 def set_config(**kwargs):
     vars(config).update(kwargs)

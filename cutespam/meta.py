@@ -12,8 +12,10 @@ class _JSONEncoder(json.JSONEncoder):
     def default(self, obj): # pylint: disable=E0202
         if isinstance(obj, set):
             return list(obj)
-        elif isinstance(obj, UUID):
+        elif isinstance(obj, (UUID, datetime)):
             return str(obj)
+        elif isinstance(obj, Enum):
+            return obj.value
         return json.JSONEncoder.default(self, obj)
 
 
@@ -35,8 +37,9 @@ class Tag:
 class Meta:
     _meta = None
 
-    def __init__(self, meta):
+    def __init__(self, meta = None, filename = None):
         self._meta = meta
+        self._filename = filename or self._meta.filename
         for k, t in type(self).__dict__.items():
             if isinstance(t, Tag):
                 setattr(self, k, None)
@@ -109,13 +112,14 @@ class Meta:
         self._meta.write()
 
     def clear(self):
-        self._meta.clear()
+        if self._meta:
+            self._meta.clear()
         for k, _ in self.properties():
             setattr(self, k, None)
 
     @property
     def filename(self):
-        return self._meta.filename
+        return self._filename
     
     @classmethod
     def tag_names(cls):
@@ -135,10 +139,10 @@ class Meta:
 
     @classmethod
     def from_file(cls, fp: Path):
-        try:
-            UUID(hex = fp.stem)
-        except ValueError:
-            print("Warning: Malformed uuid in filename")
+        #try:
+        #    UUID(hex = fp.stem)
+        #except ValueError:
+        #    print("Warning: Malformed uuid in filename")
 
         meta = pyexiv2.ImageMetadata(str(fp))
         meta.read()
@@ -166,7 +170,26 @@ class CuteMeta(Meta):
     source_other: set  = Tag("Xmp.dc.publisher")   # list of urls where the image is published
     source_via: set    = Tag("Xmp.dc.relation")    # list of urls related to the image
 
+    def __init__(self, meta = None, filename = None, uid = None):
+        self._db_uid = uid
+        super().__init__(meta, filename)
+
     def add_characters(self, *characters):
         if not self.keywords:
             self.keywords = set()
         self.keywords |= set("character:" + k for k in characters)
+
+    @classmethod
+    def from_db(cls, uid):
+        if isinstance(uid, str):
+            uid = UUID(uid)
+        return db.get_meta(uid)
+
+    def write(self):
+        if self._db_uid:
+            db.save_meta(self)
+        else:
+            super().write()
+
+
+from cutespam import db # Circualar dependency

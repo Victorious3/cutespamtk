@@ -17,6 +17,7 @@ setup (
         "console_scripts": [
             "cutespam = cutespam.cli.cli:main",
             "cutespam-rest = cutespam.cli.rest:main",
+            "cutespam-db = cutespam.cli.service:main",
             "iqdb = cutespam.cli.iqdb:main"
         ]
     },

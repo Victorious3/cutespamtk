@@ -7,3 +7,4 @@ bs4>=0.0.1
 requests>=2.21.0
 appdirs>=1.4.3
 pyyaml>=5.1
+rpyc>=4.0.2
