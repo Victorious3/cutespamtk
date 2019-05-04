@@ -1,6 +1,7 @@
 import argparse
 import codecs
 
+from uuid import UUID
 from datetime import datetime
 from pathlib import Path
 
@@ -10,10 +11,16 @@ from cutespam.meta import CuteMeta
 DESCRIPTION = "Modify a file's tag values"
 
 def main(ARGS):
-    fp = Path(ARGS.file.name)
+    fp = Path(ARGS.file)
+    if fp.exists() and fp.is_file():
+        cute_meta = CuteMeta.from_file(fp)
+    else:
+        try: uid = UUID(ARGS.file)
+        except: raise argparse.ArgumentTypeError("Not a valid file or uuid")
+        cute_meta = CuteMeta.from_db(uid)
+    
     tag = ARGS.tag
-    cute_meta = CuteMeta.from_file(fp)
-
+   
     if ARGS.subcommand == "set":
         tpe = getattr(CuteMeta, tag).type
         val = ARGS.value
@@ -71,7 +78,7 @@ def args(parser):
         help = "Tag to set", choices = CuteMeta.tag_names())
     c_set.add_argument("value", nargs = "+", type = unescaped_string,
         help = "Values to set. Multiple values for list or set")
-    c_set.add_argument("file", type = argparse.FileType())
+    c_set.add_argument("file")
 
     c_add = tag_subcommand.add_parser("add",
         help = "Adds an additional value to a tag")
@@ -79,7 +86,7 @@ def args(parser):
         help = "Tag to add to", choices = CuteMeta.tag_names())
     c_add.add_argument("value", nargs = "+", type = unescaped_string,
         help = "Values to add")
-    c_add.add_argument("file", type = argparse.FileType())
+    c_add.add_argument("file")
 
     c_remove = tag_subcommand.add_parser("remove",
         help = "Removes a value from a tag")
@@ -87,12 +94,12 @@ def args(parser):
         help = "Tag to remove from", choices = CuteMeta.tag_names())
     c_remove.add_argument("value", nargs = "+", type = unescaped_string,
         help = "Values to remove")
-    c_remove.add_argument("file", type = argparse.FileType())
+    c_remove.add_argument("file")
 
     c_delete = tag_subcommand.add_parser("delete",
         help = "Deletes a tag completely")
     c_delete.add_argument("tag",
         help = "Tag to remove from", choices = CuteMeta.tag_names())
-    c_delete.add_argument("file", type = argparse.FileType())
+    c_delete.add_argument("file")
 
     return parser
