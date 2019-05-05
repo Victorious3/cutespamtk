@@ -113,6 +113,7 @@ def init_db():
 
         for image in config.image_folder.glob("*.*"):
             if not image.is_file(): continue
+            if image.name.startswith("."): continue
             _load_file(image, __db)
 
         __db.commit()
@@ -124,6 +125,29 @@ def init_db():
         with open(hashdbf, "rb") as hashdbfp:
             log.info("Loading hashes from cache %r", str(hashdbf))
             __hashes = HashTree.read_from_file(hashdbfp, config.hash_length)
+
+        log.info("Catching up with image folder")
+        uuids_in_folder = set()
+        for image in config.image_folder.glob("*.*"):
+            if not image.is_file(): continue
+            if image.name.startswith("."): continue
+            try:
+                uuid = UUID(image.stem)
+                uuids_in_folder.add(uuid)
+
+            except: continue
+        uuids_in_database = set(d[0] for d in __db.execute("select uid from Metadata").fetchall())
+        for uid in uuids_in_database:
+            image = filename_for_uid(uid)
+            _save_file(image, __db)
+
+        for uid in uuids_in_folder - uuids_in_database: # recently added
+            _load_file(filename_for_uid(uid), __db)
+        for uid in uuids_in_database - uuids_in_folder: # recently deleted
+            _remove_image(uid, __db)
+
+        __db.commit()
+        
 
     log.info("Done!")
     def exit():
@@ -148,9 +172,8 @@ def start_listeners():
 
 def listen_for_file_changes(metadbf: Path):
     class EventHandler(FileSystemEventHandler):
-        def __init__(self, hashes):
+        def __init__(self):
             self._db = None
-            self._hashes = hashes
 
         @property
         def db(self):
@@ -174,40 +197,20 @@ def listen_for_file_changes(metadbf: Path):
             try:
                 uid = UUID(image.stem)
             except: return # Not an image file
-            log.info("Removing %s", uid)
 
-            imghash = self.db.execute("""
-                SELECT hash FROM Metadata WHERE uid = ?
-            """, (uid,)).fetchone()["hash"]
-            cnthash = self.db.execute("""
-                SELECT count(uid) FROM Metadata where hash = ?
-            """, (imghash,)).fetchone()[0]
-            
-            self.db.execute("DELETE FROM Metadata_Keywords WHERE uid = ?", (uid,))
-            self.db.execute("DELETE FROM Metadata_Collections WHERE uid = ?", (uid,))
-            self.db.execute("DELETE FROM Metadata WHERE uid = ?", (uid,))
+            _remove_image(uid, self.db)
             self.db.commit()
-
-            if cnthash == 1:
-                self._hashes.remove(imghash) # Only one hash by this name, it doesnt exist anymore now
-            
 
         def on_modified(self, event):
             image = Path(event.src_path)
             if not image.is_file(): return
             if image.name.startswith("."): return
 
-            f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(str(image)))
-            meta = CuteMeta.from_file(image)
-            data = self.db.execute("""
-                select last_updated from Metadata where uid is ?
-            """, (meta.uid,)).fetchone()
-            if f_last_updated > data["last_updated"]:
-                log.info("Reading from file %r", str(image))
-                _save_meta(meta, self.db, f_last_updated)
+            _save_file(image, self.db)
+            self.db.commit()
 
     file_observer = Observer()
-    file_observer.schedule(EventHandler(__hashes), str(config.image_folder.resolve()))
+    file_observer.schedule(EventHandler(), str(config.image_folder.resolve()))
     file_observer.setDaemon(True)
     file_observer.start()
 
@@ -284,8 +287,47 @@ def get_meta(uid: UUID):
     return meta
 
 @dbfun
+def remove_image(uid: UUID):
+    _remove_image(uid, __db)
+
+def _remove_image(uid: UUID, db: sqlite3.Connection):
+    log.info("Removing %s", uid)
+
+    imghash = db.execute("""
+        SELECT hash FROM Metadata WHERE uid = ?
+    """, (uid,)).fetchone()["hash"]
+    cnthash = db.execute("""
+        SELECT count(uid) FROM Metadata where hash = ?
+    """, (imghash,)).fetchone()[0]
+    
+    db.execute("DELETE FROM Metadata_Keywords WHERE uid = ?", (uid,))
+    db.execute("DELETE FROM Metadata_Collections WHERE uid = ?", (uid,))
+    db.execute("DELETE FROM Metadata WHERE uid = ?", (uid,))
+    db.commit()
+
+    if cnthash == 1:
+        __hashes.remove(imghash) # Only one hash by this name, it doesnt exist anymore now
+
+@dbfun
+def save_file(fp: Path):
+    _save_file(fp, __db)
+    __db.commit()
+
+def _save_file(image: Path, db: sqlite3.Connection):
+    f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(str(image)))
+    uid = UUID(image.stem)
+    data = db.execute("""
+        select last_updated from Metadata where uid is ?
+    """, (uid,)).fetchone()
+    if f_last_updated > data["last_updated"]:
+        log.info("Reading from file %r", str(image))
+        meta = CuteMeta.from_file(image)
+        _save_meta(meta, db, f_last_updated)
+
+@dbfun
 def save_meta(meta: CuteMeta):
     _save_meta(meta, __db, datetime.utcnow())
+    __db.commit()
 
 def _save_meta(meta: CuteMeta, db: sqlite3.Connection, timestamp):
     db.execute("""
