@@ -9,7 +9,7 @@ from io import BytesIO
 from cutespam import partition
 from cutespam.config import config
 from cutespam.meta import CuteMeta
-from cutespam.hash import hash_img
+from cutespam.hash import hash_meta
 
 from imagehash import phash
 from uuid import uuid4, UUID
@@ -21,7 +21,7 @@ def main(ARGS):
     cute_meta = CuteMeta.from_file(fp)
 
     if ARGS.hash:
-        hash_img(cute_meta)
+        hash_meta(cute_meta)
         print("Generated hash", cute_meta.hash)
         cute_meta.write()
     if ARGS.uid:

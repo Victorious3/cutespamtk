@@ -65,6 +65,8 @@ def connect_db(metadbf):
     return db
 
 def init_db():
+    global __db, __hashes
+
     log.info("Scanning database")
 
     metadbf = config.cache_folder / "metadata.db"
@@ -75,9 +77,8 @@ def init_db():
         metadbf.touch(exist_ok = True)
         refresh_cache = True
 
-    log.info("Setting up database %r", metadbf)
+    log.info("Setting up database %r", str(metadbf))
 
-    global __db
     __db = connect_db(metadbf)
     __db.executescript(f"""
         CREATE TABLE IF not EXISTS Metadata (
@@ -108,53 +109,11 @@ def init_db():
     if refresh_cache:
         __hashes = HashTree(config.hash_length)
 
-        log.info("Loading folder %r into database", config.image_folder)
+        log.info("Loading folder %r into database", str(config.image_folder))
 
         for image in config.image_folder.glob("*.*"):
             if not image.is_file(): continue
-                
-            log.debug("Loading %r", image)
-            meta: CuteMeta = CuteMeta.from_file(image)
-            if not meta.uid: continue
-            if not meta.hash: continue
-
-            try: __hashes.add(meta.hash)
-            except KeyError: log.warn('Possible duplicate "%s"', image)
-
-            __db.execute(f"""
-                INSERT INTO Metadata (
-                    uid, hash, caption, author, source, group_id, rating, source_other, source_via
-                ) VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?
-                )""", (
-                    meta.uid, 
-                    meta.hash, 
-                    meta.caption, 
-                    meta.author,
-                    meta.source, 
-                    meta.group_id,
-                    meta.rating, 
-                    meta.source_other, 
-                    meta.source_via
-                )
-            )
-            if meta.date:
-                __db.execute("""
-                    UPDATE Metadata SET date = ? WHERE uid is ?
-                """, (meta.date, meta.uid))
-
-            if meta.keywords:
-                __db.executemany(f"""
-                   INSERT INTO Metadata_Keywords VALUES (
-                       ?, ?
-                   ) 	
-                """, [(meta.uid, keyword) for keyword in meta.keywords])
-            if meta.collections:
-                __db.executemany(f"""
-                   INSERT INTO Metadata_Collections VALUES (
-                       ?, ?
-                   ) 	
-                """, [(meta.uid, collection) for collection in meta.collections])
+            _load_file(image, __db)
 
         __db.commit()
         with open(hashdbf, "wb") as hashdbfp:
@@ -163,7 +122,7 @@ def init_db():
 
     else:
         with open(hashdbf, "rb") as hashdbfp:
-            log.info("Loading hashes from cache %r", hashdbf)
+            log.info("Loading hashes from cache %r", str(hashdbf))
             __hashes = HashTree.read_from_file(hashdbfp, config.hash_length)
 
     log.info("Done!")
@@ -188,45 +147,91 @@ def start_listeners():
 
 
 def listen_for_file_changes(metadbf: Path):
-    db = connect_db(metadbf)
-
     class EventHandler(FileSystemEventHandler):
-        # TODO: Implement deleting and creation
+        def __init__(self, hashes):
+            self._db = None
+            self._hashes = hashes
+
+        @property
+        def db(self):
+            if self._db: return self._db
+            self._db = connect_db(metadbf)
+            return self._db
+
+        def on_created(self, event):
+            image = Path(event.src_path)
+            if not image.is_file(): return
+            if image.name.startswith("."): return 
+
+            _load_file(image, self.db)
+            self.db.commit()
+        
+        def on_deleted(self, event):
+            image = Path(event.src_path)
+            if not image.is_file(): return
+            if image.name.startswith("."): return
+
+            try:
+                uid = UUID(image.stem)
+            except: return # Not an image file
+            log.info("Removing %s", uid)
+
+            imghash = self.db.execute("""
+                SELECT hash FROM Metadata WHERE uid = ?
+            """, (uid,)).fetchone()["hash"]
+            cnthash = self.db.execute("""
+                SELECT count(uid) FROM Metadata where hash = ?
+            """, (imghash,)).fetchone()[0]
+            
+            self.db.execute("DELETE FROM Metadata_Keywords WHERE uid = ?", (uid,))
+            self.db.execute("DELETE FROM Metadata_Collections WHERE uid = ?", (uid,))
+            self.db.execute("DELETE FROM Metadata WHERE uid = ?", (uid,))
+            self.db.commit()
+
+            if cnthash == 1:
+                self._hashes.remove(imghash) # Only one hash by this name, it doesnt exist anymore now
+            
+
         def on_modified(self, event):
-            image = event.src_path
-            f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(image))
+            image = Path(event.src_path)
+            if not image.is_file(): return
+            if image.name.startswith("."): return
+
+            f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(str(image)))
             meta = CuteMeta.from_file(image)
-            data = db.execute("""
+            data = self.db.execute("""
                 select last_updated from Metadata where uid is ?
             """, (meta.uid,)).fetchone()
-            if data["last_updated"] > f_last_updated:
+            if f_last_updated > data["last_updated"]:
                 log.info("Reading from file %r", str(image))
-                _save_meta(meta, db)
+                _save_meta(meta, self.db, f_last_updated)
 
     file_observer = Observer()
-    file_observer.schedule(EventHandler, str(config.image_folder.resolve()))
+    file_observer.schedule(EventHandler(__hashes), str(config.image_folder.resolve()))
     file_observer.setDaemon(True)
     file_observer.start()
 
     while True: time.sleep(10) # Zzzzzzz....
 
 def listen_for_db_changes(metadbf: Path):
-    last_updated = os.path.getmtime(metadbf.resolve())
+    last_updated = datetime.utcfromtimestamp(os.path.getmtime(metadbf.resolve()))
     # We need our own connection since this is on a different thread
     db = connect_db(metadbf) 
     while True:
         time.sleep(10)
-        dt_last_updated = datetime.utcfromtimestamp(last_updated).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        
         modified = db.execute("""
             select * from Metadata where last_updated > ?
-        """, (dt_last_updated,)).fetchall()
+        """, (last_updated,)).fetchall()
+        last_updated = datetime.utcnow()
 
         for data in modified:
             filename = filename_for_uid(data["uid"])
             f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(filename))
-            if data["last_updated"] > f_last_updated:
+            db_last_updated = data["last_updated"]
+            if db_last_updated > f_last_updated:
                 meta = CuteMeta.from_file(filename)
-                log.info("Writing to file %r", str(meta.filename))
+                log.info("Writing to file %r", str(filename))
 
                 for name, v in zip(data.keys(), data):
                     setattr(meta, name, v)
@@ -242,8 +247,12 @@ def listen_for_db_changes(metadbf: Path):
                 meta.collections = set(c[0] for c in collections)
 
                 meta.write()
+                # Make sure that the entry in the database stays the same as the file
+                epoch = time.mktime(db_last_updated.timetuple())
+                os.utime(str(filename), (epoch, epoch))
+                
 
-        last_updated = time.time()
+        
 
 def filename_for_uid(uid):
     if isinstance(uid, str):
@@ -276,12 +285,12 @@ def get_meta(uid: UUID):
 
 @dbfun
 def save_meta(meta: CuteMeta):
-    _save_meta(meta, __db)
+    _save_meta(meta, __db, datetime.utcnow())
 
-def _save_meta(meta: CuteMeta, db: sqlite3.Connection):
+def _save_meta(meta: CuteMeta, db: sqlite3.Connection, timestamp):
     db.execute("""
         UPDATE Metadata SET
-            last_updated = strftime('%Y-%m-%d %H:%M:%f', 'now'),
+            last_updated = ?,
             hash = ?,
             caption = ?,
             author = ?,
@@ -293,6 +302,7 @@ def _save_meta(meta: CuteMeta, db: sqlite3.Connection):
         WHERE
             uid is ?
     """, (
+        timestamp,
         meta.hash,
         meta.caption,
         meta.author,
@@ -327,6 +337,60 @@ def _save_meta(meta: CuteMeta, db: sqlite3.Connection):
         """, [(meta.uid, collection) for collection in meta.collections])
     
     db.commit()
+
+@dbfun
+def load_file(image):
+    _load_file(image, __db)
+    __db.commit()
+
+def _load_file(image: Path, db: sqlite3.Connection):
+    if image.name.startswith("."): return 
+
+    f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(str(image)))
+                
+    log.debug("Loading %r", str(image))
+    meta: CuteMeta = CuteMeta.from_file(image)
+    if not meta.uid: return
+    if not meta.hash: return
+
+    try: __hashes.add(meta.hash)
+    except KeyError: log.warn("Possible duplicate %r", str(image))
+
+    db.execute(f"""
+        INSERT INTO Metadata (
+            uid, last_updated, hash, caption, author, source, group_id, rating, source_other, source_via
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        )""", (
+            meta.uid,
+            f_last_updated,
+            meta.hash, 
+            meta.caption, 
+            meta.author,
+            meta.source, 
+            meta.group_id,
+            meta.rating, 
+            meta.source_other, 
+            meta.source_via
+        )
+    )
+    if meta.date:
+        db.execute("""
+            UPDATE Metadata SET date = ? WHERE uid is ?
+        """, (meta.date, meta.uid))
+
+    if meta.keywords:
+        db.executemany(f"""
+            INSERT INTO Metadata_Keywords VALUES (
+                ?, ?
+            ) 	
+        """, [(meta.uid, keyword) for keyword in meta.keywords])
+    if meta.collections:
+        db.executemany(f"""
+            INSERT INTO Metadata_Collections VALUES (
+                ?, ?
+            ) 	
+        """, [(meta.uid, collection) for collection in meta.collections])
 
 @dbfun
 def find_similar_images(uid, threshold, limit = 10):
