@@ -13,6 +13,9 @@ setup (
     author_email = "vic@nightfall.moe",
     packages = find_packages(),
     install_requires = requirements,
+    extras_require = {
+        "autocomplete": ["argcomplete>=1.9.5"]
+    },
     entry_points = {
         "console_scripts": [
             "cutespam = cutespam.cli.cli:main",

@@ -1,3 +1,5 @@
+# PYTHON_ARGCOMPLETE_OK
+
 import argparse
 import importlib
 
@@ -12,13 +14,19 @@ for file in commands_dir.glob("*.py"):
     commands[file.stem] = command
          
 def main():
-    parser = argparse.ArgumentParser(description="Cutespam cli")
+    parser = argparse.ArgumentParser(description = "Cutespam cli")
     subparser = parser.add_subparsers(dest = "command")
     subparser.required = True
 
     for name, command in commands.items():
         command_parser = subparser.add_parser(name, description = command.DESCRIPTION, formatter_class = argparse.RawTextHelpFormatter)
         command.args(command_parser)
+
+    try:
+        import argcomplete
+        argcomplete.autocomplete(parser)
+    except ImportError:
+        pass
 
     args = parser.parse_args()
     commands[args.command].main(args)

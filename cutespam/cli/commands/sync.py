@@ -1,22 +1,23 @@
 import argparse
-import os
-
-from pathlib import Path
-from datetime import datetime
-from PIL import Image
-from io import BytesIO
-
-from cutespam import partition
-from cutespam.config import config
-from cutespam.meta import CuteMeta
-from cutespam.hash import hash_meta
-
-from imagehash import phash
-from uuid import uuid4, UUID
 
 DESCRIPTION = "Fills missing metadata and syncs the internal state"
 
 def main(ARGS):
+    import os
+
+    from pathlib import Path
+    from datetime import datetime
+    from PIL import Image
+    from io import BytesIO
+
+    from cutespam import partition
+    from cutespam.config import config
+    from cutespam.meta import CuteMeta
+    from cutespam.hash import hash_meta
+
+    from imagehash import phash
+    from uuid import uuid4, UUID
+
     fp = Path(ARGS.file.name)
     cute_meta = CuteMeta.from_file(fp)
 

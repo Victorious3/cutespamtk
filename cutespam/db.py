@@ -138,8 +138,7 @@ def init_db():
             except: continue
         uuids_in_database = set(d[0] for d in __db.execute("select uid from Metadata").fetchall())
         for uid in uuids_in_database:
-            image = filename_for_uid(uid)
-            _save_file(image, __db)
+            _save_file(filename_for_uid(uid), __db)
 
         for uid in uuids_in_folder - uuids_in_database: # recently added
             _load_file(filename_for_uid(uid), __db)
@@ -168,7 +167,6 @@ def start_listeners():
     file_listener.name = "File change listener"
     file_listener.daemon = True
     file_listener.start()
-
 
 def listen_for_file_changes(metadbf: Path):
     class EventHandler(FileSystemEventHandler):
@@ -254,8 +252,6 @@ def listen_for_db_changes(metadbf: Path):
                 epoch = time.mktime(db_last_updated.timetuple())
                 os.utime(str(filename), (epoch, epoch))
                 
-
-        
 
 def filename_for_uid(uid):
     if isinstance(uid, str):

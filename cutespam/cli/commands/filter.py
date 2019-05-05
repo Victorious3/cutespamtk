@@ -1,15 +1,15 @@
 import sys
 import fileinput
 import argparse
+from cutespam.meta import CuteMeta # This is needed for below
 
-from glob import glob
-from pathlib import Path
-
-from cutespam.meta import CuteMeta
 
 DESCRIPTION = "Filters filenames for tags or properties"
 
 def main(ARGS):
+    from glob import glob
+    from pathlib import Path
+
     def print_path(fp):
         if ARGS.uri:
             print(Path(fp).absolute().as_uri())

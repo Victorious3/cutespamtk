@@ -1,31 +1,4 @@
-import re, urllib, time, ssl, sys, json, math, os
-import urllib.error
-import urllib.request
-import validators
 import argparse
-import atpbar
-
-from datetime import datetime
-from enum import IntEnum
-from collections import OrderedDict, Counter
-from dataclasses import dataclass
-from bs4 import BeautifulSoup
-from xml.dom import minidom
-from typing import Callable
-from multiprocessing import Pool, current_process
-from abc import abstractmethod
-from uuid import UUID, uuid4
-from textwrap import dedent
-from PIL import Image
-from urllib.parse import urlparse
-from pathlib import Path
-
-from cutespam import make_request
-from cutespam.config import config
-from cutespam.meta import CuteMeta
-from cutespam.hash import hash_img
-from cutespam.providers import Provider, Other, META_PROVIDERS, UUID_PROVIDERS # TODO This shouldn't need to happen here
-
 
 DESCRIPTION = """\
 Cutespam importer.
@@ -62,21 +35,49 @@ The format is as follows:
 
 A group can be created by wrapping multiple images inside a list"""
 
-class Logger(object):
-    def __init__(self, logf):
-        self.terminal = sys.stdout
-        self.log = open(logf, "a")
-
-    def write(self, message):
-        self.terminal.write(message)
-        self.log.write(message)  
-
-    def flush(self): pass
-
-    def isatty(self): return self.terminal.isatty()
-
 def main(ARGS):
+    import time
     START_TIME = time.time()
+
+    import re, urllib, time, ssl, sys, json, math, os
+    import urllib.error
+    import urllib.request
+    import validators
+    import atpbar
+
+    from datetime import datetime
+    from enum import IntEnum
+    from collections import OrderedDict, Counter
+    from dataclasses import dataclass
+    from bs4 import BeautifulSoup
+    from xml.dom import minidom
+    from typing import Callable
+    from multiprocessing import Pool, current_process
+    from abc import abstractmethod
+    from uuid import UUID, uuid4
+    from textwrap import dedent
+    from PIL import Image
+    from urllib.parse import urlparse
+    from pathlib import Path
+
+    from cutespam import make_request
+    from cutespam.config import config
+    from cutespam.meta import CuteMeta
+    from cutespam.hash import hash_img
+    from cutespam.providers import Provider, Other, META_PROVIDERS, UUID_PROVIDERS # TODO This shouldn't need to happen here
+
+    class Logger(object):
+        def __init__(self, logf):
+            self.terminal = sys.stdout
+            self.log = open(logf, "a")
+
+        def write(self, message):
+            self.terminal.write(message)
+            self.log.write(message)  
+
+        def flush(self): pass
+
+        def isatty(self): return self.terminal.isatty()
 
     def flatten_groups(jsn):
         group = 1
@@ -421,7 +422,7 @@ def args(parser):
         help = "Delay after each successful request to avoid possible rate limits")
     extra.add_argument("--ratelimit-retry", action = "store_true",
         help = "Supports HTTP status 429, retries after the time specified in the header")
-    extra.add_argument("--max-filesize", default = 20, type = int, choices = argrange(1, sys.maxsize), metavar = "[>1]")
+    extra.add_argument("--max-filesize", default = 20, type = int, choices = argrange(1, 5000000), metavar = "[>1]")
 
     parser.add_argument("in_file", type = argparse.FileType(), 
         help = "Input file with json formatted list of input files")

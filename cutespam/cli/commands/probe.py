@@ -1,13 +1,15 @@
 import argparse
-from uuid import UUID
-from pathlib import Path
-
-from cutespam import db
-from cutespam.meta import CuteMeta
+from cutespam.cli import UUIDCompleter
 
 DESCRIPTION = "Outputs a file's tags"
 
 def main(ARGS):
+    from uuid import UUID
+    from pathlib import Path
+
+    from cutespam import db
+    from cutespam.meta import CuteMeta
+
     fp = Path(ARGS.file)
     if fp.exists() and fp.is_file():
         cute_meta = CuteMeta.from_file(fp)
@@ -25,8 +27,9 @@ def main(ARGS):
         print(cute_meta.to_string(ARGS.tag))
 
 def args(parser):
+    from argcomplete.completers import ChoicesCompleter
     parser.add_argument("--tag", nargs = "+",
         help = "List of tags to include")
     parser.add_argument("--json", action = "store_true",
         help = "Output as json")
-    parser.add_argument("file")
+    parser.add_argument("file").completer = UUIDCompleter

@@ -1,16 +1,17 @@
-import argparse
-import codecs
+import argparse, codecs
 
-from uuid import UUID
-from datetime import datetime
-from pathlib import Path
-
-from cutespam import yn_choice
+from cutespam.cli import UUIDCompleter
 from cutespam.meta import CuteMeta
 
 DESCRIPTION = "Modify a file's tag values"
 
 def main(ARGS):
+    from uuid import UUID
+    from datetime import datetime
+    from pathlib import Path
+
+    from cutespam import yn_choice
+
     fp = Path(ARGS.file)
     if fp.exists() and fp.is_file():
         cute_meta = CuteMeta.from_file(fp)
@@ -78,7 +79,7 @@ def args(parser):
         help = "Tag to set", choices = CuteMeta.tag_names())
     c_set.add_argument("value", nargs = "+", type = unescaped_string,
         help = "Values to set. Multiple values for list or set")
-    c_set.add_argument("file")
+    c_set.add_argument("file").completer = UUIDCompleter
 
     c_add = tag_subcommand.add_parser("add",
         help = "Adds an additional value to a tag")
@@ -86,7 +87,7 @@ def args(parser):
         help = "Tag to add to", choices = CuteMeta.tag_names())
     c_add.add_argument("value", nargs = "+", type = unescaped_string,
         help = "Values to add")
-    c_add.add_argument("file")
+    c_add.add_argument("file").completer = UUIDCompleter
 
     c_remove = tag_subcommand.add_parser("remove",
         help = "Removes a value from a tag")
@@ -94,12 +95,12 @@ def args(parser):
         help = "Tag to remove from", choices = CuteMeta.tag_names())
     c_remove.add_argument("value", nargs = "+", type = unescaped_string,
         help = "Values to remove")
-    c_remove.add_argument("file")
+    c_remove.add_argument("file").completer = UUIDCompleter
 
     c_delete = tag_subcommand.add_parser("delete",
         help = "Deletes a tag completely")
     c_delete.add_argument("tag",
         help = "Tag to remove from", choices = CuteMeta.tag_names())
-    c_delete.add_argument("file")
+    c_delete.add_argument("file").completer = UUIDCompleter
 
     return parser
