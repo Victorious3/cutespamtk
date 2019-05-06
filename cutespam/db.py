@@ -1,4 +1,5 @@
 import sqlite3, atexit, re, json, sys, rpyc, os, time
+import logging
 
 from datetime import datetime
 from rpyc.utils.classic import obtain
@@ -8,12 +9,11 @@ from multiprocessing import Process
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from math import floor
 
 from cutespam.hashtree import HashTree
 from cutespam.config import config
 from cutespam.meta import CuteMeta, Rating
-
-import logging
 
 # Type conversions
 sqlite3.register_adapter(UUID, lambda uid: str(uid.hex))
@@ -40,7 +40,8 @@ def dbfun(fun):
                     "allow_public_attrs": True,
                     "allow_pickle": True
                 }).root
-            except: 
+            except Exception as e:
+                print(str(e)) 
                 __rpccon = False
                 log.warn("No database service running, please consider starting it by running cutespam-db in a separate process or setting it up as a service with your system.")
                 log.warn("Loading the database takes a long time but it makes the requests a lot faster.")
@@ -289,6 +290,9 @@ def get_tab_complete_uids(uidstr: str):
 
 @dbfun
 def get_meta(uid: UUID):
+    return _get_meta(uid)
+
+def _get_meta(uid: UUID):
     meta = CuteMeta(uid = uid, filename = filename_for_uid(uid))
     res = __db.execute("select * from Metadata where uid is ?", (str(uid.hex),)).fetchone()
     for name, v in zip(res.keys(), res):
@@ -446,5 +450,21 @@ def _load_file(image: Path, db: sqlite3.Connection):
 @dbfun
 def find_similar_images(uid, threshold, limit = 10):
     """ returns a list of uids for similar images for an image/uid """
+
+    assert 0 <= threshold <= 1
+    if limit > 100: limit = 100
+    if limit < 1: limit = 1
+
     if isinstance(uid, str):
-        uid = UUID(str)
+        uid = UUID(uid)
+
+    meta = _get_meta(uid)
+    hashes = __hashes.find_all_hamming_distance(meta.hash, floor(config.hash_length * (1 - threshold)), limit)
+
+    if hashes:
+        uids = __db.execute(f"select uid from Metadata where hash in ({','.join('?' for _ in range(len(hashes)))})", 
+            tuple(format(h, 'x') for h in hashes))
+
+        return [uid[0] for uid in uids]
+    else:
+        return []
