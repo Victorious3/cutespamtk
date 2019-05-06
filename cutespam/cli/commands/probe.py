@@ -27,7 +27,6 @@ def main(ARGS):
         print(cute_meta.to_string(ARGS.tag))
 
 def args(parser):
-    from argcomplete.completers import ChoicesCompleter
     parser.add_argument("--tag", nargs = "+",
         help = "List of tags to include")
     parser.add_argument("--json", action = "store_true",
