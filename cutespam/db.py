@@ -179,6 +179,13 @@ def listen_for_file_changes(metadbf: Path):
             self._db = connect_db(metadbf)
             return self._db
 
+        #def on_any_event(self, event):
+        #    log.info("%s %r", type(event), event.src_path)
+
+        def on_moved(self, event):
+            self.on_deleted({"src_path": event.src_path})
+            self.on_created({"src_path": event.dest_path})
+
         def on_created(self, event):
             image = Path(event.src_path)
             if not image.is_file(): return
@@ -212,45 +219,51 @@ def listen_for_file_changes(metadbf: Path):
     file_observer.setDaemon(True)
     file_observer.start()
 
-    while True: time.sleep(10) # Zzzzzzz....
+    try:
+        while True: time.sleep(10) # Zzzzzzz....
+    except KeyboardInterrupt:
+        pass
 
 def listen_for_db_changes(metadbf: Path):
     last_updated = datetime.utcfromtimestamp(os.path.getmtime(metadbf.resolve()))
     # We need our own connection since this is on a different thread
-    db = connect_db(metadbf) 
-    while True:
-        time.sleep(10)
-        
-        modified = db.execute("""
-            select * from Metadata where last_updated > ?
-        """, (last_updated,)).fetchall()
-        last_updated = datetime.utcnow()
+    db = connect_db(metadbf)
+    try:
+        while True:
+            time.sleep(10)
+            
+            modified = db.execute("""
+                select * from Metadata where last_updated > ?
+            """, (last_updated,)).fetchall()
+            last_updated = datetime.utcnow()
 
-        for data in modified:
-            filename = filename_for_uid(data["uid"])
-            f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(filename))
-            db_last_updated = data["last_updated"]
-            if db_last_updated > f_last_updated:
-                meta = CuteMeta.from_file(filename)
-                log.info("Writing to file %r", str(filename))
+            for data in modified:
+                filename = filename_for_uid(data["uid"])
+                f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(filename))
+                db_last_updated = data["last_updated"]
+                if db_last_updated > f_last_updated:
+                    meta = CuteMeta.from_file(filename)
+                    log.info("Writing to file %r", str(filename))
 
-                for name, v in zip(data.keys(), data):
-                    setattr(meta, name, v)
+                    for name, v in zip(data.keys(), data):
+                        setattr(meta, name, v)
 
-                keywords = db.execute("""
-                    select keyword from Metadata_Keywords where uid = ?
-                """, (data["uid"],)).fetchmany()
-                collections = db.execute("""
-                    select collection from Metadata_Collections where uid = ?
-                """, (data["uid"],)).fetchmany()
+                    keywords = db.execute("""
+                        select keyword from Metadata_Keywords where uid = ?
+                    """, (data["uid"],)).fetchmany()
+                    collections = db.execute("""
+                        select collection from Metadata_Collections where uid = ?
+                    """, (data["uid"],)).fetchmany()
 
-                meta.keywords = set(k[0] for k in keywords)
-                meta.collections = set(c[0] for c in collections)
+                    meta.keywords = set(k[0] for k in keywords)
+                    meta.collections = set(c[0] for c in collections)
 
-                meta.write()
-                # Make sure that the entry in the database stays the same as the file
-                epoch = time.mktime(db_last_updated.timetuple())
-                os.utime(str(filename), (epoch, epoch))
+                    meta.write()
+                    # Make sure that the entry in the database stays the same as the file
+                    epoch = time.mktime(db_last_updated.timetuple())
+                    os.utime(str(filename), (epoch, epoch))
+    except KeyboardInterrupt:
+        pass
                 
 
 def filename_for_uid(uid):
@@ -285,6 +298,7 @@ def get_meta(uid: UUID):
 @dbfun
 def remove_image(uid: UUID):
     _remove_image(uid, __db)
+    __db.commit()
 
 def _remove_image(uid: UUID, db: sqlite3.Connection):
     log.info("Removing %s", uid)
@@ -299,7 +313,6 @@ def _remove_image(uid: UUID, db: sqlite3.Connection):
     db.execute("DELETE FROM Metadata_Keywords WHERE uid = ?", (uid,))
     db.execute("DELETE FROM Metadata_Collections WHERE uid = ?", (uid,))
     db.execute("DELETE FROM Metadata WHERE uid = ?", (uid,))
-    db.commit()
 
     if cnthash == 1:
         __hashes.remove(imghash) # Only one hash by this name, it doesnt exist anymore now

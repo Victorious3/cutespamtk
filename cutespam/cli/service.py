@@ -30,7 +30,10 @@ def main():
     })
 
     print("Listening on port", config.service_port)
-    while True:
-        server.start()
+    try:
+        while True:
+            server.start()
+    except OSError:
+        pass
 if __name__ == "__main__":
     main()
