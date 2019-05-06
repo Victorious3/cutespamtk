@@ -1,7 +1,7 @@
 import rpyc
 
 from rpyc.utils.classic import obtain
-from rpyc.utils.server import OneShotServer
+from rpyc.utils.server import Server
 
 from cutespam import db
 from cutespam.config import config
@@ -24,16 +24,13 @@ def main():
     db.init_db()
     db.start_listeners()
 
-    server = OneShotServer(service = DBService(db._functions), hostname = "localhost", port = config.service_port, protocol_config = {
+    server = Server(service = DBService(db._functions), hostname = "localhost", port = config.service_port, protocol_config = {
         "allow_public_attrs": True,
         "allow_pickle": True
     })
 
     print("Listening on port", config.service_port)
-    try:
-        while True:
-            server.start()
-    except OSError:
-        pass
+    server.start()
+
 if __name__ == "__main__":
     main()

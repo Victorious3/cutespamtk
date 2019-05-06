@@ -266,7 +266,7 @@ def listen_for_db_changes(metadbf: Path):
     except KeyboardInterrupt:
         pass
                 
-def filename_for_uid(uid):
+def filename_for_uid(uid) -> Path:
     if isinstance(uid, str):
         uid = UUID(str)
 
@@ -457,16 +457,18 @@ def find_similar_images(uid: UUID, threshold: int, limit = 10):
     if limit < 1: limit = 1
 
     meta = get_meta(uid)
-    hashes = __hashes.find_all_hamming_distance(meta.hash, ceil(config.hash_length * (1 - threshold)), limit)
+    distance = ceil(config.hash_length * (1 - threshold))
+    hashes = __hashes.find_all_hamming_distance(meta.hash, distance, limit)
     ret = []
 
     if hashes:
         for similarity, h in hashes:
+            similarity = 1 - (similarity / config.hash_length)
             res = __db.execute("select uid from Metadata where hash is ?", (format(h, "x"),)).fetchall()
             for r in res:
-                ret.append((round(similarity / config.hash_length, 3), r[0]))
+                ret.append((similarity, r[0]))
 
-    return ret
+    return sorted(ret, reverse = True)
 
 @dbfun
 def find_uids_with_hash(h: str):

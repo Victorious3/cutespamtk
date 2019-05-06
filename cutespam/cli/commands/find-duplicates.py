@@ -61,7 +61,7 @@ def main(ARGS):
                     width, height = img_data.size
                     fformat = img_data.format
 
-                meta = CuteMeta.from_file(d)
+                meta = CuteMeta.from_db(uid)
                 path = str(d.resolve().absolute())
                 images += f"<td><img src='{path}'/></td>"
                 links += f"<td><a href={path}><code>{path}</code></a></td>"

@@ -1,12 +1,11 @@
-import sys
-import fileinput
 import argparse
 from cutespam.meta import CuteMeta # This is needed for below
-
 
 DESCRIPTION = "Filters filenames for tags or properties"
 
 def main(ARGS):
+    import sys
+    import fileinput
     from glob import glob
     from pathlib import Path
 
@@ -37,7 +36,7 @@ def main(ARGS):
 
 def args(parser):
     parser.add_argument("--uri", action = "store_true",
-         help = "Emits absolute file:// URIs intead of relative paths")
+         help = "Emits absolute file:// URIs instead of relative paths")
     parser.add_argument("--tag", nargs = "+", default = [], choices = CuteMeta.tag_names(),
         help = "Filters for tags")
     parser.add_argument("--not-tag", nargs = "+", default = [],

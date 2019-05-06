@@ -1,4 +1,5 @@
 import argparse
+from cutespam.cli import argrange
 
 DESCRIPTION = """\
 Cutespam importer.
@@ -39,24 +40,15 @@ def main(ARGS):
     import time
     START_TIME = time.time()
 
-    import re, urllib, time, ssl, sys, json, math, os
+    import urllib, time, ssl, sys, json, math, os
     import urllib.error
     import urllib.request
-    import validators
     import atpbar
 
     from datetime import datetime
-    from enum import IntEnum
-    from collections import OrderedDict, Counter
-    from dataclasses import dataclass
-    from bs4 import BeautifulSoup
-    from xml.dom import minidom
-    from typing import Callable
-    from multiprocessing import Pool, current_process
-    from abc import abstractmethod
+    from collections import Counter
+    from multiprocessing import Pool
     from uuid import UUID, uuid4
-    from textwrap import dedent
-    from PIL import Image
     from urllib.parse import urlparse
     from pathlib import Path
 
@@ -384,17 +376,6 @@ def main(ARGS):
     END_TIME = time.time()
 
     print(f"Took {END_TIME - START_TIME:.2f} seconds to complete.")
-
-class argrange:
-    def __init__(self, min, max):
-        self.min = min
-        self.max = max
-    
-    def __contains__(self, val):
-        return self.min <= val <= self.max
-
-    def __iter__(self):
-        return iter([self.min, self.max])
 
 def args(parser):
     options = parser.add_mutually_exclusive_group()

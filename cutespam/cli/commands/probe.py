@@ -1,5 +1,5 @@
 import argparse
-from cutespam.cli import UUIDCompleter
+from cutespam.cli import UUIDFileCompleter
 
 DESCRIPTION = "Outputs a file's tags"
 
@@ -31,4 +31,4 @@ def args(parser):
         help = "List of tags to include")
     parser.add_argument("--json", action = "store_true",
         help = "Output as json")
-    parser.add_argument("file").completer = UUIDCompleter
+    parser.add_argument("file").completer = UUIDFileCompleter
