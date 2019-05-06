@@ -9,7 +9,7 @@ from multiprocessing import Process
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from math import floor
+from math import ceil
 
 from cutespam.hashtree import HashTree
 from cutespam.config import config
@@ -34,7 +34,7 @@ _functions = {}
 def dbfun(fun):
     def wrapper(*args, **kwargs):
         global __rpccon
-        if __rpccon is None:
+        if __rpccon is None and not __db:
             try: 
                 __rpccon = rpyc.connect("localhost", config.service_port, config = {
                     "allow_public_attrs": True,
@@ -266,7 +266,6 @@ def listen_for_db_changes(metadbf: Path):
     except KeyboardInterrupt:
         pass
                 
-
 def filename_for_uid(uid):
     if isinstance(uid, str):
         uid = UUID(str)
@@ -286,13 +285,15 @@ def get_tab_complete_uids(uidstr: str):
     uidstr = uidstr.replace("-", "")
     """ Returns a list of tab completions for a starting uid """
     uids = __db.execute("select uid from Metadata where uid like ?", (uidstr + "%",)).fetchall()
-    return [uid[0] for uid in uids]
+    return set(uid[0] for uid in uids)
+
+@dbfun
+def get_all_uids():
+    uids = __db.execute("select uid from Metadata").fetchall()
+    return set(uid[0] for uid in uids)
 
 @dbfun
 def get_meta(uid: UUID):
-    return _get_meta(uid)
-
-def _get_meta(uid: UUID):
     meta = CuteMeta(uid = uid, filename = filename_for_uid(uid))
     res = __db.execute("select * from Metadata where uid is ?", (str(uid.hex),)).fetchone()
     for name, v in zip(res.keys(), res):
@@ -448,23 +449,35 @@ def _load_file(image: Path, db: sqlite3.Connection):
         """, [(meta.uid, collection) for collection in meta.collections])
 
 @dbfun
-def find_similar_images(uid, threshold, limit = 10):
+def find_similar_images(uid: UUID, threshold: int, limit = 10):
     """ returns a list of uids for similar images for an image/uid """
 
     assert 0 <= threshold <= 1
     if limit > 100: limit = 100
     if limit < 1: limit = 1
 
-    if isinstance(uid, str):
-        uid = UUID(uid)
-
-    meta = _get_meta(uid)
-    hashes = __hashes.find_all_hamming_distance(meta.hash, floor(config.hash_length * (1 - threshold)), limit)
+    meta = get_meta(uid)
+    hashes = __hashes.find_all_hamming_distance(meta.hash, ceil(config.hash_length * (1 - threshold)), limit)
+    ret = []
 
     if hashes:
-        uids = __db.execute(f"select uid from Metadata where hash in ({','.join('?' for _ in range(len(hashes)))})", 
-            tuple(format(h, 'x') for h in hashes))
+        for similarity, h in hashes:
+            res = __db.execute("select uid from Metadata where hash is ?", (format(h, "x"),)).fetchall()
+            for r in res:
+                ret.append((round(similarity / config.hash_length, 3), r[0]))
 
-        return [uid[0] for uid in uids]
-    else:
-        return []
+    return ret
+
+@dbfun
+def find_uids_with_hash(h: str):
+    res = __db.execute("select uid from Metadata where hash is ?", (h,))
+    ret = set(r[0] for r in res)
+    return ret
+
+@dbfun
+def find_all_duplicates():
+    res = __db.execute("select hash from Metadata group by hash having count(*) > 1")
+    ret = []
+    for h, in res:
+        ret.append(find_uids_with_hash(h))
+    return ret

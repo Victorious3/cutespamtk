@@ -230,6 +230,8 @@ class SeedValue:
 # Algorithm found by me, no credit needed! I'm not sure if its described anywhere else
 # but for the sake of completeness I'll write my thoughts on it down here
 def find_all_hamming_distance(tree, key, distance, limit):
+    """ returns a list of tuples with the first entry being the distance and the second one being the hash """
+
     key = _hash_to_int(key)
     bits = tree._to_bits(key)
     hash_length = tree.hash_length
@@ -291,7 +293,7 @@ def find_all_hamming_distance(tree, key, distance, limit):
                 # print("  After:", new_seed)
 
                 if len(new_seed.path) - 1 == hash_length: # found a result
-                    results.add(new_seed.path[-1].key)
+                    results.add((current_distance, new_seed.path[-1].key))
 
                     # if we reached the limit there's no point in continuing, just return the results now
                     if limit is not None and len(results) >= limit: return results

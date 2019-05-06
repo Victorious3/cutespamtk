@@ -3,15 +3,16 @@ import argparse
 DESCRIPTION = "Finds duplicates and merges them"
 
 def main(ARGS):
+    raise NotImplementedError() # TODO Need to rewrite this if needed
+
     import os
 
-    from pathlib import Path
     from PIL import Image
     from functools import reduce
-    from uuid import UUID, uuid4
+    from uuid import uuid4
 
-    from cutespam import find_duplicates, all_files_in_folders
     from cutespam.meta import CuteMeta
+    from cutespam.db import find_all_duplicates
     from cutespam.providers import Provider, DanbooruImage, DanbooruImageFmt2
 
     class SortKeyFile:
@@ -60,10 +61,10 @@ def main(ARGS):
             self.meta = meta
             self.provider = Provider.for_url(meta.source) if meta.source else None
 
-    duplicates = find_duplicates(all_files_in_folders(ARGS.folders))
+    duplicates = find_all_duplicates()
 
     for duplicte in duplicates:
-        metas = [Entry(f, CuteMeta.from_file(f)) for f in duplicte]
+        metas = [Entry(f, CuteMeta.from_db(uid)) for uid in duplicte]
         metas = sorted(metas, key = SortKeyFile, reverse = True)
 
         best_file = metas[0].file

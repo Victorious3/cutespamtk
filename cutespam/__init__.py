@@ -21,26 +21,6 @@ def all_files_in_folders(folders):
             if f.name.startswith("."): continue
             if f.is_file(): yield f
 
-def find_duplicates(files): # TODO Move this elsewhere
-    ALL_HASHES = {}
-    duplicates = []
-
-    for f in files:
-        try:
-            meta = CuteMeta.from_file(f)
-        except TypeError: continue
-
-        h = meta.hash
-        if h in ALL_HASHES.keys():
-            hashes = ALL_HASHES[h]
-            if len(hashes) == 1:
-                duplicates.append(hashes)
-            hashes.append(f)
-        else:
-            ALL_HASHES[h] = [f]
-
-    return duplicates
-
 def decode_all(file):
     return "\n".join(b.decode("utf-8") for b in file.readlines())
 

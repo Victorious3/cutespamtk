@@ -3,11 +3,13 @@ import argparse
 DESCRIPTION = "Finds duplicate image files and generates a html page showing them"
 
 def main(ARGS):
-    import cutespam, webbrowser
+    import webbrowser
     import os
-    from pathlib import Path
+
     from PIL import Image
-    from cutespam import find_duplicates, all_files_in_folders
+
+    from cutespam.meta import CuteMeta
+    from cutespam.db import find_all_duplicates, filename_for_uid
 
     def html_output(duplicates):
         t_html = """
@@ -52,13 +54,14 @@ def main(ARGS):
             dimensions = ""
             tags = ""
 
-            for d in duplicate:
+            for uid in duplicate:
+                d = filename_for_uid(uid)
                 fsize = os.path.getsize(d.resolve()) / 1_000_000
                 with Image.open(d) as img_data:
                     width, height = img_data.size
                     fformat = img_data.format
 
-                meta = cutespam.CuteMeta.from_file(d)
+                meta = CuteMeta.from_file(d)
                 path = str(d.resolve().absolute())
                 images += f"<td><img src='{path}'/></td>"
                 links += f"<td><a href={path}><code>{path}</code></a></td>"
@@ -69,7 +72,7 @@ def main(ARGS):
 
         return t_html.format(tables = tables)
 
-    duplicates = find_duplicates(all_files_in_folders(ARGS.folders))
+    duplicates = find_all_duplicates()
 
     if len(duplicates) > 0:
         res = html_output(duplicates)
@@ -81,5 +84,4 @@ def main(ARGS):
 
 def args(parser):
     parser.add_argument("outf", help = "Output file")
-    parser.add_argument("folders", nargs = "*")
     
