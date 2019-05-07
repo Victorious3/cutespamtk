@@ -14,6 +14,8 @@ class JSONEncoder(json.JSONEncoder):
             return str(obj)
         elif isinstance(obj, Enum):
             return obj.value
+        elif hasattr(obj, "__dataclass_fields__"): # dataclass
+            return getattr(obj, "__dict__")
         return json.JSONEncoder.default(self, obj)
 
 from cutespam.meta import CuteMeta

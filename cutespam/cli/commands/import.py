@@ -313,7 +313,7 @@ def main(ARGS):
             cute_meta.source = img
             cute_meta.source_other = source.get("src", [])
             cute_meta.source_via = source.get("via", [])
-            cute_meta.date = datetime.now()
+            cute_meta.date = datetime.utcnow()
             cute_meta.write()
 
         except urllib.error.HTTPError as e:

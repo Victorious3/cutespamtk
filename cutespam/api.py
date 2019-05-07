@@ -1,15 +1,18 @@
 import requests
 import hashlib
+import shutil
 
 from PIL import Image
 from io import BytesIO
 from dataclasses import dataclass
 from typing import List
 from pathlib import Path
-from shutil import rmtree
+from uuid import UUID, uuid4
+from datetime import datetime
 
+from cutespam.meta import CuteMeta, Rating
 from cutespam.hash import hash_img
-from cutespam.db import find_similar_images_hash
+from cutespam.db import find_similar_images_hash, filename_for_uid
 from cutespam.providers import Provider
 from cutespam.iqdb import iqdb
 from cutespam.config import config
@@ -30,7 +33,7 @@ def get_apifun(name):
 
 @apifun
 def clear_cache():
-    rmtree(config.imgcache)
+    shutil.rmtree(config.imgcache)
     config.imgcache.mkdir(parents = True, exist_ok = True)
 
 def get_cached_file(img) -> Path:
@@ -124,18 +127,57 @@ def iqdb_upscale(img, threshold = 0.9, service = None) -> IQDBResult:
     result.__dict__.update(meta)
     return result
 
-@apifun
-def download(img, **kwargs):
-    pass
+@dataclass
+class SimilarImage:
+    similarity: float
+    uid: UUID
+    file: str
 
 @apifun
-def download_or_show_similar(data: dict, threshold = 0.9):
+def download_or_show_similar(data: dict, threshold = 0.9) -> List[SimilarImage]:
     file = get_cached_file(data["img"])
     h = hash_img(file)
-    similar = find_similar_images_hash(h, threshold * 100)
+    similar = find_similar_images_hash(h, threshold)
     if similar:
-        return similar
-    return None # OK
+        return [SimilarImage(s[0], s[1], filename_for_uid(s[1]).name) for s in similar]
+    return download(data)
+
+@apifun
+def download(data: dict):
+    file = get_cached_file(data["img"])
+    meta: CuteMeta = CuteMeta.from_file(file)
+    if "uid" in data:
+        meta.uid = UUID(data["uid"])
+    else:
+        meta.uid = uuid4()
+
+    meta.source = data["img"]
+    meta.keywords = set()
+    meta.hash = hash_img(file)
+    meta.date = datetime.utcnow()
+
+    if "author" in data: 
+        meta.author = data["author"]
+        meta.keywords |= set(["author:" + meta.author])
+    if "caption" in data:
+        meta.caption = data["caption"]
+    if "character" in data: 
+        meta.keywords |= set("character:" + c for c in data["character"])
+    if "collections" in data: 
+        meta.collections = set(data["collections"])
+        meta.keywords |= set("collection:" + c for c in data["collections"])
+    if "rating" in data:
+        meta.rating = Rating(data["rating"])
+    if "src" in data:
+        meta.source_other = set(data["src"])
+    if "via" in data:
+        meta.source_via = set(data["via"])
+        
+
+    meta.write()
+    meta.release() # Windows hack
+    shutil.move(str(file), str(config.image_folder / (str(meta.uid) + file.suffix)))
+
     
 @apifun
 def get_config():

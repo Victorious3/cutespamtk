@@ -335,7 +335,7 @@ def _save_file(image: Path, db: sqlite3.Connection):
     if f_last_updated > data["last_updated"]:
         log.info("Reading from file %r", str(image))
         meta = CuteMeta.from_file(image)
-        _save_meta(meta, db, f_last_updated)
+        _save_meta(meta, f_last_updated, db)
 
 @dbfun
 def save_meta(meta: CuteMeta, db: sqlite3.Connection = None):

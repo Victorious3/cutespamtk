@@ -1,5 +1,33 @@
 export let port = chrome.runtime.connectNative("moe.nightfall.booru")
 
+export class Session extends Map {
+    set(id, value) {
+        if (typeof value === 'object') value = JSON.stringify(value)
+        sessionStorage.setItem(id, value)
+    }
+
+    get(id) {
+        const value = sessionStorage.getItem(id)
+        try {
+            return JSON.parse(value)
+        } catch (e) {
+            return value
+        }
+    }
+}
+
+let last_status = null
+export function set_status(msg = null, status = null) {
+    let n_status_txt = document.querySelector("#status-text")
+    if (msg) n_status_txt.innerText = msg
+    else n_status_txt.innerText = ""
+    let n_status_img = document.querySelector("#status-img")
+    n_status_img.classList.toggle(last_status, false)
+    n_status_img.classList.toggle(status, true)
+    last_status = status
+}
+
+
 port.onDisconnect.addListener(function(p) {
     let error = p.error || browser.runtime.lastError
     if (error) {
@@ -46,6 +74,9 @@ export async function iqdb_upscale(img, service, threshold = 0.9) {
 }
 export async function download_or_show_similar(data, threshold = 0.9) {
     return await request({action: "download-or-show-similar", data: data, threshold: threshold})
+}
+export async function download(data) {
+    return await request({action: "download", data: data})
 }
 
 export async function XSS(tabid, fun) {

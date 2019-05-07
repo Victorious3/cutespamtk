@@ -2,7 +2,9 @@
 
 import * as common from "./common.js"
 
-const MAX_HEIGHT = 600;
+const MAX_HEIGHT = 650
+const session = new common.Session()
+let popup = false
 
 let DATA = {
     img: null,
@@ -40,17 +42,6 @@ function insert_keyword(keyword_list, keyword) {
     label.style.display = "none"
 }
 
-let last_status = null
-function set_status(msg = null, status = null) {
-    let n_status_txt = document.querySelector("#status-text")
-    if (msg) n_status_txt.innerText = msg
-    else n_status_txt.innerText = ""
-    let n_status_img = document.querySelector("#status-img")
-    n_status_img.classList.toggle(last_status, false)
-    n_status_img.classList.toggle(status, true)
-    last_status = status
-}
-
 function update_data_fields(data) {
     if (data.img) {
         document.querySelector("#thumbnail").src = data.img
@@ -83,6 +74,7 @@ function update_data_fields(data) {
 
     if (data.src) {
         let src_list = document.querySelector("#add-source")
+        src_list.innerHTML = ""
         for (let src of data.src) {
             src_list.appendChild(document.createTextNode(src))
             src_list.appendChild(document.createElement("br"))
@@ -90,6 +82,7 @@ function update_data_fields(data) {
     }
     if (data.via) {
         let via_list = document.querySelector("#via")
+        via_list.innerHTML = ""
         for (let via of data.via) {
             via_list.appendChild(document.createTextNode(via))
             via_list.appendChild(document.createElement("br"))
@@ -122,26 +115,36 @@ function update_cache() {
 window.addEventListener("blur", update_cache)
 
 async function iqdb() {
-    set_status("Fetching IQDB results", "loading")
+    common.set_status("Fetching IQDB results", "loading")
     let reply = await common.iqdb_upscale(DATA.img, DATA.service)
     if (reply.error) {
-        set_status(reply.error, "error")
+        common.set_status(reply.error, "error")
         console.log(reply.error, reply.trace)
     } else {
         DATA = {...DATA, ...reply}
         DATA.iqdb = true // Reduce load
         common.cache(DATA.url, DATA)
         update_data_fields(reply)
-        set_status("Found image!", "success")
+        common.set_status("Found image!", "success")
         document.querySelector("#iqdb-button").disabled = true
     }
 }
 
 async function download() {
     DATA = extract_data_fields()
-    set_status("Downloading file", "loading")
-    await common.download_or_show_similar(DATA)
-    set_status("Added to collection", "success")
+    common.set_status("Downloading file", "loading")
+    let res = await common.download_or_show_similar(DATA)
+    if (res != "OK") {
+        session.set("DATA", DATA)  // Store in session for access from other page
+        session.set("duplicates", res)
+        window.location.replace("duplicates.html?popup=" + (popup ? "true": "false"))
+    } else {
+        if (res.error) {
+            common.set_status(res.error, "error")
+        } else {
+            common.set_status("Added to collection", "success")
+        }
+    }
 }
 
 window.addEventListener("load", function() {
@@ -217,13 +220,13 @@ window.addEventListener("load", function() {
 window.addEventListener("load", async function() {
 chrome.tabs.query({active: true, currentWindow: true}, async function(tabs) {
 
-    set_status("Fetching metadata", "loading")
+    common.set_status("Fetching metadata", "loading")
 
     let tab = tabs[0]
     let service = null
 
-    let urlParams = new URLSearchParams(window.location.search);
-    let popup = urlParams.get("popup")
+    let urlParams = new URLSearchParams(window.location.search)
+    popup = urlParams.get("popup")
 
     if (popup) {
         // Using a different url
@@ -240,8 +243,12 @@ chrome.tabs.query({active: true, currentWindow: true}, async function(tabs) {
             let v = 0 //body.offsetWidth - window.innerWidth + 20
             let h = body.offsetHeight - window.innerHeight
 
-            if (window.innerHeight + h >= MAX_HEIGHT)
+            if (window.innerHeight + h >= MAX_HEIGHT) {
+                html.style.overflow = "initial"
                 h = MAX_HEIGHT - window.innerHeight
+            } else {
+                html.style.overflow = "hidden"
+            }
             
             window.resizeBy(v, h)
             auto_resized = true
@@ -285,5 +292,5 @@ chrome.tabs.query({active: true, currentWindow: true}, async function(tabs) {
     common.cache(DATA.url, DATA)
     update_data_fields(DATA)
 
-    set_status()
+    common.set_status()
 })})

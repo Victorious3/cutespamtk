@@ -107,6 +107,9 @@ class Meta:
             self._meta.clear()
         for k, _ in self.properties():
             setattr(self, k, None)
+            
+    def release(self):
+        self._meta = None
 
     @property
     def filename(self):
