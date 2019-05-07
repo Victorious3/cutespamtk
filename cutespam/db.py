@@ -189,32 +189,35 @@ def listen_for_file_changes():
         #def on_any_event(self, event):
         #    log.info("%s %r", type(event), event.src_path)
 
+        @staticmethod
+        def is_image(file):
+            if not file.is_file(): return False
+            if file.name.startswith("."): return False
+            try:
+                UUID(file.stem)
+                return True
+            except: return False
+
         def on_moved(self, event):
             self.on_deleted({"src_path": event.src_path})
             self.on_created({"src_path": event.dest_path})
 
         def on_created(self, event):
             image = Path(event.src_path)
-            if not image.is_file(): return
-            if image.name.startswith("."): return 
+            if not self.is_image(image): return
 
             load_file(image, db = self.db)
         
         def on_deleted(self, event):
             image = Path(event.src_path)
-            if not image.is_file(): return
-            if image.name.startswith("."): return
-
-            try:
-                uid = UUID(image.stem)
-            except: return # Not an image file
-
+            if not self.is_image(image): return
+            
+            uid = UUID(image.stem)
             remove_image(uid, db = self.db)
 
         def on_modified(self, event):
             image = Path(event.src_path)
-            if not image.is_file(): return
-            if image.name.startswith("."): return
+            if not self.is_image(image): return
 
             save_file(image, db = self.db)
 
