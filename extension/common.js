@@ -29,7 +29,7 @@ export function set_status(msg = null, status = null) {
 
 
 port.onDisconnect.addListener(function(p) {
-    let error = p.error || browser.runtime.lastError
+    let error = p.error || chrome.runtime.lastError
     if (error) {
         console.log("Disconnected due to an error:", error.message);
     }
