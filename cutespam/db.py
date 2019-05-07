@@ -461,7 +461,7 @@ def __collect_uids_with_hashes(hashes, db: sqlite3.Connection):
     return sorted(ret, reverse = True)
 
 @dbfun
-def find_similar_images_hash(h: str, threshold: int, limit = 10, db: sqlite3.Connection = None):
+def find_similar_images_hash(h: str, threshold: float, limit = 10, db: sqlite3.Connection = None):
     found = False
     distance = ceil(config.hash_length * (1 - threshold))
 
@@ -480,7 +480,7 @@ def find_similar_images_hash(h: str, threshold: int, limit = 10, db: sqlite3.Con
     return __collect_uids_with_hashes(hashes, db)
 
 @dbfun
-def find_similar_images(uid: UUID, threshold: int, limit = 10, db: sqlite3.Connection = None):
+def find_similar_images(uid: UUID, threshold: float, limit = 10, db: sqlite3.Connection = None):
     """ returns a list of uids for similar images for an image/uid """
 
     assert 0 <= threshold <= 1
@@ -505,5 +505,5 @@ def find_all_duplicates(db: sqlite3.Connection = None):
     res = db.execute("select hash from Metadata group by hash having count(*) > 1")
     ret = []
     for h, in res:
-        ret.append(find_uids_with_hash(h))
+        ret.append(find_uids_with_hash(h, db = db))
     return ret
