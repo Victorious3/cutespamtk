@@ -6,7 +6,7 @@ from enum import Enum
 from uuid import UUID
 from pathlib import Path
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileDeletedEvent
 from math import ceil
 from threading import Thread, RLock
 from contextlib import contextmanager
@@ -199,8 +199,8 @@ def listen_for_file_changes():
             except: return False
 
         def on_moved(self, event):
-            self.on_deleted({"src_path": event.src_path})
-            self.on_created({"src_path": event.dest_path})
+            self.on_deleted(FileDeletedEvent(event.src_path))
+            self.on_created(FileCreatedEvent(event.dest_path))
 
         def on_created(self, event):
             image = Path(event.src_path)
