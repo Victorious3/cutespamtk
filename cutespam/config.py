@@ -55,12 +55,15 @@ def _read_config():
 
     # Sanitize values
     if not config.cache_folder:
-        config.cache_folder = appdirs.user_cache_dir()
+        config.cache_folder = appdirs.user_cache_dir(NAME, ORG)
 
     config.image_folder = Path(config.image_folder).expanduser()
     config.image_folder.mkdir(parents = True, exist_ok = True)
     config.cache_folder = Path(config.cache_folder).expanduser()
     config.cache_folder.mkdir(parents = True, exist_ok = True)
+
+    config.metadbf = config.cache_folder / "metadata.db"
+    config.hashdbf = config.cache_folder / "hashes.db"
 
     config.tag_regex = config.tag_regex.replace("'", "\\'").replace('"', '\\"')
     

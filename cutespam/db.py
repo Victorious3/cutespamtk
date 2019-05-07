@@ -4,11 +4,12 @@ import logging
 from datetime import datetime
 from enum import Enum
 from uuid import UUID
-from multiprocessing import Process
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from math import ceil
+from threading import Thread, RLock
+from contextlib import contextmanager
 
 from cutespam.hashtree import HashTree
 from cutespam.config import config
@@ -28,15 +29,24 @@ sqlite3.register_converter("PSet", lambda v: set(json.loads(v.decode())))
 log = logging.Logger("db")
 log.addHandler(logging.StreamHandler(sys.stdout))
 
+# Make sure only one thread talks to this
+
+__hashes_lock = RLock()
 __hashes: HashTree = None
+
+@contextmanager
+def get_hashes():
+    with __hashes_lock:
+        yield __hashes
+
 __db: sqlite3.Connection = None
 __rpccon = None
 
 _functions = {}
 def dbfun(fun):
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, db = None, **kwargs):
         global __rpccon
-        if __rpccon is None and not __db:
+        if __rpccon is None and not __hashes:
             try:
                 __rpccon = Pyro4.Proxy(f"PYRO:cutespam-db@localhost:{config.service_port}")
             except Exception as e:
@@ -49,126 +59,120 @@ def dbfun(fun):
         if __rpccon:
             return getattr(__rpccon, fun.__name__)(*args, **kwargs)
         else:
-            return fun(*args, **kwargs)
+            return fun(*args, db = db or __db, **kwargs)
 
-    _functions[fun.__name__] = fun
+    _functions[fun.__name__] = wrapper
     return wrapper
 
 def regexp(expr, item):
     reg = re.compile(expr)
     return reg.search(item) is not None
 
-def connect_db(metadbf):
-    db = sqlite3.connect(str(metadbf), detect_types = sqlite3.PARSE_DECLTYPES)
+def connect_db():
+    db = sqlite3.connect(str(config.metadbf), detect_types = sqlite3.PARSE_DECLTYPES)
     db.create_function("REGEXP", 2, regexp)
     db.row_factory = sqlite3.Row
     return db
 
 def init_db():
     global __db, __hashes
+    with __hashes_lock:
 
-    log.info("Scanning database")
+        log.info("Scanning database")
 
-    metadbf = config.cache_folder / "metadata.db"
-    hashdbf = config.cache_folder / "hashes.db"
+        refresh_cache = False
+        if not config.metadbf.exists() or not config.hashdbf.exists():
+            config.metadbf.touch(exist_ok = True)
+            refresh_cache = True
 
-    refresh_cache = False
-    if not metadbf.exists() or not hashdbf.exists():
-        metadbf.touch(exist_ok = True)
-        refresh_cache = True
+        log.info("Setting up database %r", str(config.metadbf))
 
-    log.info("Setting up database %r", str(metadbf))
+        __db = connect_db()
+        __db.executescript(f"""
+            CREATE TABLE IF not EXISTS Metadata (
+                uid UUID PRIMARY KEY not null,
+                last_updated timestamp not null DEFAULT(strftime('%Y-%m-%d %H:%M:%f', 'now')),
+                hash TEXT not null,
+                caption TEXT,
+                author TEXT,
+                source TEXT,
+                group_id UUID,
+                date timestamp not null DEFAULT(strftime('%Y-%m-%d %H:%M:%f', 'now')),
+                rating Rating,
+                source_other PSet,
+                source_via PSet
+            ) WITHOUT ROWID;
 
-    __db = connect_db(metadbf)
-    __db.executescript(f"""
-        CREATE TABLE IF not EXISTS Metadata (
-            uid UUID PRIMARY KEY not null,
-            last_updated timestamp not null DEFAULT(strftime('%Y-%m-%d %H:%M:%f', 'now')),
-            hash TEXT not null,
-            caption TEXT,
-            author TEXT,
-            source TEXT,
-            group_id UUID,
-            date timestamp not null DEFAULT(strftime('%Y-%m-%d %H:%M:%f', 'now')),
-            rating Rating,
-            source_other PSet,
-            source_via PSet
-        ) WITHOUT ROWID;
+            CREATE TABLE IF not EXISTS Metadata_Keywords (
+                uid UUID not null,
+                keyword TEXT NOT NULL CHECK (keyword REGEXP '{config.tag_regex}')
+            );
 
-        CREATE TABLE IF not EXISTS Metadata_Keywords (
-            uid UUID not null,
-            keyword TEXT NOT NULL CHECK (keyword REGEXP '{config.tag_regex}')
-        );
+            CREATE TABLE IF not EXISTS Metadata_Collections (
+                uid UUID not null,
+                collection TEXT NOT NULL CHECK (collection REGEXP '{config.tag_regex}')
+            );
+        """)
 
-        CREATE TABLE IF not EXISTS Metadata_Collections (
-            uid UUID not null,
-            collection TEXT NOT NULL CHECK (collection REGEXP '{config.tag_regex}')
-        );
-    """)
+        if refresh_cache:
+            __hashes = HashTree(config.hash_length)
 
-    if refresh_cache:
-        __hashes = HashTree(config.hash_length)
+            log.info("Loading folder %r into database", str(config.image_folder))
 
-        log.info("Loading folder %r into database", str(config.image_folder))
+            for image in config.image_folder.glob("*.*"):
+                if not image.is_file(): continue
+                if image.name.startswith("."): continue
+                _load_file(image, __db)
 
-        for image in config.image_folder.glob("*.*"):
-            if not image.is_file(): continue
-            if image.name.startswith("."): continue
-            _load_file(image, __db)
+            __db.commit()
+            with open(config.hashdbf, "wb") as hashdbfp:
+                log.info("Writing to file...")
+                __hashes.write_to_file(config.hashdbf)
 
-        __db.commit()
-        with open(hashdbf, "wb") as hashdbfp:
-            log.info("Writing to file...")
-            __hashes.write_to_file(hashdbf)
+        else:
+            with open(config.hashdbf, "rb") as hashdbfp:
+                log.info("Loading hashes from cache %r", str(config.hashdbf))
+                __hashes = HashTree.read_from_file(hashdbfp, config.hash_length)
 
-    else:
-        with open(hashdbf, "rb") as hashdbfp:
-            log.info("Loading hashes from cache %r", str(hashdbf))
-            __hashes = HashTree.read_from_file(hashdbfp, config.hash_length)
+            log.info("Catching up with image folder")
+            uuids_in_folder = set()
+            for image in config.image_folder.glob("*.*"):
+                if not image.is_file(): continue
+                if image.name.startswith("."): continue
+                try:
+                    uuid = UUID(image.stem)
+                    uuids_in_folder.add(uuid)
 
-        log.info("Catching up with image folder")
-        uuids_in_folder = set()
-        for image in config.image_folder.glob("*.*"):
-            if not image.is_file(): continue
-            if image.name.startswith("."): continue
-            try:
-                uuid = UUID(image.stem)
-                uuids_in_folder.add(uuid)
+                except: continue
+            uuids_in_database = set(d[0] for d in __db.execute("select uid from Metadata").fetchall())
+            for uid in uuids_in_database:
+                _save_file(filename_for_uid(uid), __db)
 
-            except: continue
-        uuids_in_database = set(d[0] for d in __db.execute("select uid from Metadata").fetchall())
-        for uid in uuids_in_database:
-            _save_file(filename_for_uid(uid), __db)
+            for uid in uuids_in_folder - uuids_in_database: # recently added
+                _load_file(filename_for_uid(uid), __db)
+            for uid in uuids_in_database - uuids_in_folder: # recently deleted
+                _remove_image(uid, __db)
 
-        for uid in uuids_in_folder - uuids_in_database: # recently added
-            _load_file(filename_for_uid(uid), __db)
-        for uid in uuids_in_database - uuids_in_folder: # recently deleted
-            _remove_image(uid, __db)
+            __db.commit()
+            
 
-        __db.commit()
-        
+        log.info("Done!")
+        def exit():
+            __db.commit()
+            __db.close()
 
-    log.info("Done!")
-    def exit():
-        __db.commit()
-        __db.close()
-
-    atexit.register(exit)
+        atexit.register(exit)
 
 def start_listeners():
-    metadbf = config.cache_folder / "metadata.db"
-
     log.info("Listening for file changes")
-    db_listener = Process(target = listen_for_db_changes, args = (metadbf,))
+    listen_for_file_changes()
+
+    db_listener = Thread(target = listen_for_db_changes)
     db_listener.name = "Database change listener"
     db_listener.daemon = True
     db_listener.start()
-    file_listener = Process(target = listen_for_file_changes, args = (metadbf,))
-    file_listener.name = "File change listener"
-    file_listener.daemon = True
-    file_listener.start()
 
-def listen_for_file_changes(metadbf: Path):
+def listen_for_file_changes():
     class EventHandler(FileSystemEventHandler):
         def __init__(self):
             self._db = None
@@ -176,7 +180,7 @@ def listen_for_file_changes(metadbf: Path):
         @property
         def db(self):
             if self._db: return self._db
-            self._db = connect_db(metadbf)
+            self._db = connect_db()
             return self._db
 
         #def on_any_event(self, event):
@@ -191,8 +195,7 @@ def listen_for_file_changes(metadbf: Path):
             if not image.is_file(): return
             if image.name.startswith("."): return 
 
-            _load_file(image, self.db)
-            self.db.commit()
+            load_file(image, db = self.db)
         
         def on_deleted(self, event):
             image = Path(event.src_path)
@@ -203,31 +206,24 @@ def listen_for_file_changes(metadbf: Path):
                 uid = UUID(image.stem)
             except: return # Not an image file
 
-            _remove_image(uid, self.db)
-            self.db.commit()
+            remove_image(uid, db = self.db)
 
         def on_modified(self, event):
             image = Path(event.src_path)
             if not image.is_file(): return
             if image.name.startswith("."): return
 
-            _save_file(image, self.db)
-            self.db.commit()
+            save_file(image, db = self.db)
 
     file_observer = Observer()
     file_observer.schedule(EventHandler(), str(config.image_folder.resolve()))
     file_observer.setDaemon(True)
     file_observer.start()
 
-    try:
-        while True: time.sleep(10) # Zzzzzzz....
-    except KeyboardInterrupt:
-        pass
-
-def listen_for_db_changes(metadbf: Path):
-    last_updated = datetime.utcfromtimestamp(os.path.getmtime(metadbf.resolve()))
+def listen_for_db_changes():
+    last_updated = datetime.utcfromtimestamp(os.path.getmtime(config.metadbf.resolve()))
     # We need our own connection since this is on a different thread
-    db = connect_db(metadbf)
+    db = connect_db()
     try:
         while True:
             time.sleep(10)
@@ -280,29 +276,29 @@ def filename_for_uid(uid) -> Path:
     raise FileNotFoundError("No file for uuid %s found", uid)
 
 @dbfun
-def get_tab_complete_uids(uidstr: str):
+def get_tab_complete_uids(uidstr: str, db: sqlite3.Connection = None):
     uidstr = uidstr.replace("-", "")
     """ Returns a list of tab completions for a starting uid """
-    uids = __db.execute("select uid from Metadata where uid like ?", (uidstr + "%",)).fetchall()
+    uids = db.execute("select uid from Metadata where uid like ?", (uidstr + "%",)).fetchall()
     return set(uid[0] for uid in uids)
 
 @dbfun
-def get_all_uids():
-    uids = __db.execute("select uid from Metadata").fetchall()
+def get_all_uids(db: sqlite3.Connection = None):
+    uids = db.execute("select uid from Metadata").fetchall()
     return set(uid[0] for uid in uids)
 
 @dbfun
-def get_meta(uid: UUID):
+def get_meta(uid: UUID, db: sqlite3.Connection = None):
     meta = CuteMeta(uid = uid, filename = filename_for_uid(uid))
-    res = __db.execute("select * from Metadata where uid is ?", (str(uid.hex),)).fetchone()
+    res = db.execute("select * from Metadata where uid is ?", (str(uid.hex),)).fetchone()
     for name, v in zip(res.keys(), res):
         setattr(meta, name, v)
     return meta
 
 @dbfun
-def remove_image(uid: UUID):
-    _remove_image(uid, __db)
-    __db.commit()
+def remove_image(uid: UUID, db: sqlite3.Connection = None):
+    _remove_image(uid, db)
+    db.commit()
 
 def _remove_image(uid: UUID, db: sqlite3.Connection):
     log.info("Removing %s", uid)
@@ -319,12 +315,13 @@ def _remove_image(uid: UUID, db: sqlite3.Connection):
     db.execute("DELETE FROM Metadata WHERE uid = ?", (uid,))
 
     if cnthash == 1:
-        __hashes.remove(imghash) # Only one hash by this name, it doesnt exist anymore now
+        with get_hashes() as hashes:
+            hashes.remove(imghash) # Only one hash by this name, it doesnt exist anymore now
 
 @dbfun
-def save_file(fp: Path):
-    _save_file(fp, __db)
-    __db.commit()
+def save_file(fp: Path, db: sqlite3.Connection = None):
+    _save_file(fp, db)
+    db.commit()
 
 def _save_file(image: Path, db: sqlite3.Connection):
     f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(str(image)))
@@ -338,11 +335,11 @@ def _save_file(image: Path, db: sqlite3.Connection):
         _save_meta(meta, db, f_last_updated)
 
 @dbfun
-def save_meta(meta: CuteMeta):
-    _save_meta(meta, __db, datetime.utcnow())
-    __db.commit()
+def save_meta(meta: CuteMeta, db: sqlite3.Connection = None):
+    _save_meta(meta, datetime.utcnow(), db)
+    db.commit()
 
-def _save_meta(meta: CuteMeta, db: sqlite3.Connection, timestamp):
+def _save_meta(meta: CuteMeta, timestamp, db: sqlite3.Connection):
     db.execute("""
         UPDATE Metadata SET
             last_updated = ?,
@@ -394,9 +391,9 @@ def _save_meta(meta: CuteMeta, db: sqlite3.Connection, timestamp):
     db.commit()
 
 @dbfun
-def load_file(image):
-    _load_file(image, __db)
-    __db.commit()
+def load_file(image, db: sqlite3.Connection):
+    _load_file(image, db)
+    db.commit()
 
 def _load_file(image: Path, db: sqlite3.Connection):
     if image.name.startswith("."): return 
@@ -408,7 +405,9 @@ def _load_file(image: Path, db: sqlite3.Connection):
     if not meta.uid: return
     if not meta.hash: return
 
-    try: __hashes.add(meta.hash)
+    try:
+        with get_hashes() as hashes: 
+            hashes.add(meta.hash)
     except KeyError: log.warn("Possible duplicate %r", str(image))
 
     db.execute(f"""
@@ -448,14 +447,14 @@ def _load_file(image: Path, db: sqlite3.Connection):
         """, [(meta.uid, collection) for collection in meta.collections])
 
 @dbfun
-def find_similar_images(uid: UUID, threshold: int, limit = 10):
+def find_similar_images(uid: UUID, threshold: int, limit = 10, db: sqlite3.Connection = None):
     """ returns a list of uids for similar images for an image/uid """
 
     assert 0 <= threshold <= 1
     if limit > 100: limit = 100
     if limit < 1: limit = 1
 
-    meta = get_meta(uid)
+    meta = get_meta(uid, db = db)
     distance = ceil(config.hash_length * (1 - threshold))
     hashes = __hashes.find_all_hamming_distance(meta.hash, distance, limit)
     ret = []
@@ -463,21 +462,21 @@ def find_similar_images(uid: UUID, threshold: int, limit = 10):
     if hashes:
         for similarity, h in hashes:
             similarity = 1 - (similarity / config.hash_length)
-            res = __db.execute("select uid from Metadata where hash is ?", (format(h, "x"),)).fetchall()
+            res = db.execute("select uid from Metadata where hash is ?", (format(h, "x"),)).fetchall()
             for r in res:
                 ret.append((similarity, r[0]))
 
     return sorted(ret, reverse = True)
 
 @dbfun
-def find_uids_with_hash(h: str):
-    res = __db.execute("select uid from Metadata where hash is ?", (h,))
+def find_uids_with_hash(h: str, db: sqlite3.Connection = None):
+    res = db.execute("select uid from Metadata where hash is ?", (h,))
     ret = set(r[0] for r in res)
     return ret
 
 @dbfun
-def find_all_duplicates():
-    res = __db.execute("select hash from Metadata group by hash having count(*) > 1")
+def find_all_duplicates(db: sqlite3.Connection = None):
+    res = db.execute("select hash from Metadata group by hash having count(*) > 1")
     ret = []
     for h, in res:
         ret.append(find_uids_with_hash(h))

@@ -5,14 +5,16 @@ from cutespam import db
 from cutespam.config import config
 from cutespam.hashtree import HashTree
 
-@Pyro4.behavior(instance_mode = "single")
-class DBService: pass
+class DBService:
+    def __init__(self):
+        self.db = db.connect_db()
            
 for name, f in db._functions.items():
     def wrapper(f, name):
         def function(self, *args, **kwargs):
+            kwargs.pop("db", None)
             print("Calling", name)
-            return f(*args, **kwargs)
+            return f(*args, db = self.db, **kwargs)
         return function
     setattr(DBService, name, wrapper(f, name))
 
@@ -28,7 +30,7 @@ def main():
     # Make sure we are running a single thread to share the database connection
     # TODO This should be changed in the future, multiple threads already use their own db.
     # Pass db as first parameter to every method?
-    Pyro4.config.SERVERTYPE = "multiplex" 
+    #Pyro4.config.SERVERTYPE = "multiplex" 
 
     deamon = Pyro4.Daemon(host = "localhost", port = config.service_port)
     uri = deamon.register(DBService, objectId = "cutespam-db")
