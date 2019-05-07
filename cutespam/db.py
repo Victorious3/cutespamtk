@@ -249,6 +249,7 @@ def listen_for_db_changes():
                 if db_last_updated > f_last_updated:
                     meta = CuteMeta.from_file(filename)
                     log.info("Writing to file %r", str(filename))
+                    print("file:", f_last_updated, "database:", db_last_updated)
 
                     for name, v in zip(data.keys(), data):
                         setattr(meta, name, v)
@@ -335,13 +336,16 @@ def save_file(fp: Path, db: sqlite3.Connection = None):
 def _save_file(image: Path, db: sqlite3.Connection):
     f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(str(image)))
     uid = UUID(image.stem)
-    data = db.execute("""
+    db_last_updated = db.execute("""
         select last_updated from Metadata where uid is ?
-    """, (uid,)).fetchone()
-    if f_last_updated > data["last_updated"]:
+    """, (uid,)).fetchone()[0]
+    
+    if f_last_updated > db_last_updated:
         log.info("Reading from file %r", str(image))
+        print("file:", f_last_updated, "database:", db_last_updated)
         meta = CuteMeta.from_file(image)
         _save_meta(meta, f_last_updated, db)
+        db.commit()
 
 @dbfun
 def save_meta(meta: CuteMeta, db: sqlite3.Connection = None):
