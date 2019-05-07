@@ -137,26 +137,29 @@ def init_db():
                 log.info("Loading hashes from cache %r", str(config.hashdbf))
                 __hashes = HashTree.read_from_file(hashdbfp, config.hash_length)
 
-            log.info("Catching up with image folder")
-            uuids_in_folder = set()
-            for image in config.image_folder.glob("*.*"):
-                if not image.is_file(): continue
-                if image.name.startswith("."): continue
-                try:
-                    uuid = UUID(image.stem)
-                    uuids_in_folder.add(uuid)
+        log.info("Catching up with image folder")
+        uuids_in_folder = set()
+        for image in config.image_folder.glob("*.*"):
+            if not image.is_file(): continue
+            if image.name.startswith("."): continue
+            try:
+                uuid = UUID(image.stem)
+                uuids_in_folder.add(uuid)
 
-                except: continue
-            uuids_in_database = set(d[0] for d in __db.execute("select uid from Metadata").fetchall())
-            for uid in uuids_in_database:
+            except: continue
+        uuids_in_database = set(d[0] for d in __db.execute("select uid from Metadata").fetchall())
+
+        for uid in uuids_in_folder - uuids_in_database: # recently added
+            _load_file(filename_for_uid(uid), __db)
+        for uid in uuids_in_database - uuids_in_folder: # recently deleted
+            _remove_image(uid, __db)
+
+        for uid in uuids_in_database:
+            try:
                 _save_file(filename_for_uid(uid), __db)
+            except FileNotFoundError: pass # was deleted earlier
 
-            for uid in uuids_in_folder - uuids_in_database: # recently added
-                _load_file(filename_for_uid(uid), __db)
-            for uid in uuids_in_database - uuids_in_folder: # recently deleted
-                _remove_image(uid, __db)
-
-            __db.commit()
+        __db.commit()
             
 
         log.info("Done!")
