@@ -64,6 +64,8 @@ def _read_config():
 
     config.metadbf = config.cache_folder / "metadata.db"
     config.hashdbf = config.cache_folder / "hashes.db"
+    config.imgcache = config.cache_folder / "imgcache"
+    config.imgcache.mkdir(parents = True, exist_ok = True)
 
     config.tag_regex = config.tag_regex.replace("'", "\\'").replace('"', '\\"')
     

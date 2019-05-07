@@ -1,5 +1,11 @@
 "use strict"
 
+async function clear_cache() {
+    const common = await import("./common.js")
+    common.clear_image_cache()
+}
+clear_cache()
+
 let matchers = [
     ".*twitter.com/.*/status/.*",
     ".*danbooru.donmai.us/posts/([\\d]+)",

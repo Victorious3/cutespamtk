@@ -135,11 +135,18 @@ async function iqdb() {
         set_status("Found image!", "success")
         document.querySelector("#iqdb-button").disabled = true
     }
-    
+}
+
+async function download() {
+    DATA = extract_data_fields()
+    set_status("Downloading file", "loading")
+    await common.download_or_show_similar(DATA)
+    set_status("Added to collection", "success")
 }
 
 window.addEventListener("load", function() {
     document.querySelector("#iqdb-button").addEventListener("click", iqdb)
+    document.querySelector("#download-button").addEventListener("click", download)
 
     function collapse() {
         let div = this.parentNode.querySelector("div")

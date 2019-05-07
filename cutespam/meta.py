@@ -8,16 +8,7 @@ from textwrap import indent
 from pathlib import Path
 from enum import Enum
 
-class _JSONEncoder(json.JSONEncoder):
-    def default(self, obj): # pylint: disable=E0202
-        if isinstance(obj, set):
-            return list(obj)
-        elif isinstance(obj, (UUID, datetime)):
-            return str(obj)
-        elif isinstance(obj, Enum):
-            return obj.value
-        return json.JSONEncoder.default(self, obj)
-
+from cutespam import JSONEncoder
 
 class Tag:
     def __init__(self, tag_name: str):
@@ -67,7 +58,7 @@ class Meta:
         props = self.properties()
         if fields:  
             props = filter(lambda i: i[0] in fields, props)
-        return json.dumps(dict(props), indent = 4, cls = _JSONEncoder)
+        return json.dumps(dict(props), indent = 4, cls = JSONEncoder)
 
     def __str__(self):
         return self.to_string()

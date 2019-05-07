@@ -1,10 +1,15 @@
 import requests
+import hashlib
 
 from PIL import Image
 from io import BytesIO
 from dataclasses import dataclass
 from typing import List
+from pathlib import Path
+from shutil import rmtree
 
+from cutespam.hash import hash_img
+from cutespam.db import find_similar_images_hash
 from cutespam.providers import Provider
 from cutespam.iqdb import iqdb
 from cutespam.config import config
@@ -22,6 +27,32 @@ def get_apifun(name):
     if not apifun:
         raise APIException("Invalid api function " + name)
     return apifun
+
+@apifun
+def clear_cache():
+    rmtree(config.imgcache)
+    config.imgcache.mkdir(parents = True, exist_ok = True)
+
+def get_cached_file(img) -> Path:
+    md5 = hashlib.md5(img.encode()).hexdigest()
+    file = config.imgcache / ((md5) + ".jpg")
+    if not file.exists():
+        file = file.with_suffix(".png")
+
+    if not file.exists():
+        req = requests.get(img)
+        mime = req.headers["content-type"]
+        if mime == "image/jpeg":
+            ext = ".jpg"
+        elif mime == "image/png":
+            ext = ".png"
+        else: raise APIException("Incompatible image format")
+
+        file = file.with_suffix(ext)
+        with open(file, "wb") as fp:
+            fp.write(req.content)
+    
+    return file
 
 @dataclass
 class FetchUrlResult:
@@ -50,15 +81,14 @@ class IQDBResult:
     src: List[str]
 
 @apifun
-def iqdb_upscale(img, threshold = 0.9, service = None):
+def iqdb_upscale(img, threshold = 0.9, service = None) -> IQDBResult:
     results = [i for i in iqdb(url = img) if i.similarity >= threshold]
     if not results:
         raise ValueError("No result found")
 
     # need to download file to get size :/
     # this means we need to download it multiple times, TODO make a cache? 
-    req = requests.get(img)
-    with Image.open(BytesIO(req.content)) as imgf:
+    with Image.open(get_cached_file(img)) as imgf:
         width, height = imgf.size
         resolution = width * height
 
@@ -94,6 +124,19 @@ def iqdb_upscale(img, threshold = 0.9, service = None):
     result.__dict__.update(meta)
     return result
 
+@apifun
+def download(img, **kwargs):
+    pass
+
+@apifun
+def download_or_show_similar(data: dict, threshold = 0.9):
+    file = get_cached_file(data["img"])
+    h = hash_img(file)
+    similar = find_similar_images_hash(h, threshold * 100)
+    if similar:
+        return similar
+    return None # OK
+    
 @apifun
 def get_config():
     return config

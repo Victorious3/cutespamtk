@@ -1,7 +1,20 @@
-import urllib, time
+import urllib, time, json
 
 from functools import reduce
 from pathlib import Path
+from enum import Enum
+from uuid import UUID
+from datetime import datetime
+
+class JSONEncoder(json.JSONEncoder):
+    def default(self, obj): # pylint: disable=E0202
+        if isinstance(obj, set):
+            return list(obj)
+        elif isinstance(obj, (UUID, datetime)):
+            return str(obj)
+        elif isinstance(obj, Enum):
+            return obj.value
+        return json.JSONEncoder.default(self, obj)
 
 from cutespam.meta import CuteMeta
 from cutespam.config import config

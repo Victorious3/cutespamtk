@@ -9,15 +9,19 @@ port.onDisconnect.addListener(function(p) {
 
 export async function request(json) {
     let promise = await new Promise((resolve, reject) => {
-        port.postMessage(json)
         let listener = function(message) {
             port.onMessage.removeListener(listener)
             console.log(message)
             resolve(message)
         }
         port.onMessage.addListener(listener)
+        port.postMessage(json)
     }).catch(err => {throw err})
     return promise
+}
+
+export async function clear_image_cache() {
+    await request({action: "clear-cache"})
 }
 
 export function cache(url, result) {
@@ -39,6 +43,9 @@ export async function fetch_url(url) {
 }
 export async function iqdb_upscale(img, service, threshold = 0.9) {
     return await request({action: "iqdb-upscale", img: img, service: service, threshold: threshold})
+}
+export async function download_or_show_similar(data, threshold = 0.9) {
+    return await request({action: "download-or-show-similar", data: data, threshold: threshold})
 }
 
 export async function XSS(tabid, fun) {

@@ -10,6 +10,7 @@ from watchdog.events import FileSystemEventHandler
 from math import ceil
 from threading import Thread, RLock
 from contextlib import contextmanager
+from functools import wraps
 
 from cutespam.hashtree import HashTree
 from cutespam.config import config
@@ -17,6 +18,7 @@ from cutespam.meta import CuteMeta, Rating
 
 import Pyro4
 Pyro4.config.SERIALIZER = "pickle"
+Pyro4.config.MAX_RETRIES = 1
 
 # Type conversions
 sqlite3.register_adapter(UUID, lambda uid: str(uid.hex))
@@ -44,9 +46,10 @@ __rpccon = None
 
 _functions = {}
 def dbfun(fun):
+    @wraps(fun)
     def wrapper(*args, db = None, **kwargs):
         global __rpccon
-        if __rpccon is None and not __hashes:
+        if (__rpccon is None) and (not __hashes):
             try:
                 __rpccon = Pyro4.Proxy(f"PYRO:cutespam-db@localhost:{config.service_port}")
             except Exception as e:
@@ -446,6 +449,36 @@ def _load_file(image: Path, db: sqlite3.Connection):
             ) 	
         """, [(meta.uid, collection) for collection in meta.collections])
 
+def __collect_uids_with_hashes(hashes, db: sqlite3.Connection):
+    ret = []
+    if hashes:
+        for similarity, h in hashes:
+            similarity = 1 - (similarity / config.hash_length)
+            res = db.execute("select uid from Metadata where hash is ?", (format(h, "x"),)).fetchall()
+            for r in res:
+                ret.append((similarity, r[0]))
+
+    return sorted(ret, reverse = True)
+
+@dbfun
+def find_similar_images_hash(h: str, threshold: int, limit = 10, db: sqlite3.Connection = None):
+    found = False
+    distance = ceil(config.hash_length * (1 - threshold))
+
+    hashes = []
+    with get_hashes() as _hashes:
+        # First see if the hash is inside there already
+        if h in _hashes: 
+            found = True
+            hashes.append((0, int(h, 16)))
+            
+        else: _hashes.add(h) # Need to add it temporarily
+        
+        hashes += _hashes.find_all_hamming_distance(h, distance, limit)
+        if not found: _hashes.remove(h)
+
+    return __collect_uids_with_hashes(hashes, db)
+
 @dbfun
 def find_similar_images(uid: UUID, threshold: int, limit = 10, db: sqlite3.Connection = None):
     """ returns a list of uids for similar images for an image/uid """
@@ -458,16 +491,8 @@ def find_similar_images(uid: UUID, threshold: int, limit = 10, db: sqlite3.Conne
     distance = ceil(config.hash_length * (1 - threshold))
     with get_hashes() as _hashes:
         hashes = _hashes.find_all_hamming_distance(meta.hash, distance, limit)
-    ret = []
 
-    if hashes:
-        for similarity, h in hashes:
-            similarity = 1 - (similarity / config.hash_length)
-            res = db.execute("select uid from Metadata where hash is ?", (format(h, "x"),)).fetchall()
-            for r in res:
-                ret.append((similarity, r[0]))
-
-    return sorted(ret, reverse = True)
+    return __collect_uids_with_hashes(hashes, db)
 
 @dbfun
 def find_uids_with_hash(h: str, db: sqlite3.Connection = None):
