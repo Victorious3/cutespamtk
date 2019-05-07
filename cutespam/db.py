@@ -1,8 +1,7 @@
-import sqlite3, atexit, re, json, sys, rpyc, os, time
+import sqlite3, atexit, re, json, sys, os, time
 import logging
 
 from datetime import datetime
-from rpyc.utils.classic import obtain
 from enum import Enum
 from uuid import UUID
 from multiprocessing import Process
@@ -14,6 +13,9 @@ from math import ceil
 from cutespam.hashtree import HashTree
 from cutespam.config import config
 from cutespam.meta import CuteMeta, Rating
+
+import Pyro4
+Pyro4.config.SERIALIZER = "pickle"
 
 # Type conversions
 sqlite3.register_adapter(UUID, lambda uid: str(uid.hex))
@@ -35,11 +37,8 @@ def dbfun(fun):
     def wrapper(*args, **kwargs):
         global __rpccon
         if __rpccon is None and not __db:
-            try: 
-                __rpccon = rpyc.connect("localhost", config.service_port, config = {
-                    "allow_public_attrs": True,
-                    "allow_pickle": True
-                }).root
+            try:
+                __rpccon = Pyro4.Proxy(f"PYRO:cutespam-db@localhost:{config.service_port}")
             except Exception as e:
                 print(str(e)) 
                 __rpccon = False
@@ -48,7 +47,7 @@ def dbfun(fun):
                 init_db()
         
         if __rpccon:
-            return obtain(getattr(__rpccon, fun.__name__)(*args, **kwargs))
+            return getattr(__rpccon, fun.__name__)(*args, **kwargs)
         else:
             return fun(*args, **kwargs)
 
