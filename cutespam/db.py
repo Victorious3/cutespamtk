@@ -52,6 +52,7 @@ def dbfun(fun):
         if (__rpccon is None) and (not __hashes):
             try:
                 __rpccon = Pyro4.Proxy(f"PYRO:cutespam-db@localhost:{config.service_port}")
+                assert __rpccon.ping() == "pong"
             except Exception as e:
                 print(str(e)) 
                 __rpccon = False

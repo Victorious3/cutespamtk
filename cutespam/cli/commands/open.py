@@ -6,10 +6,11 @@ DESCRIPTION = "Opens an image file"
 def main(ARGS):
     import os
     from uuid import UUID
+    from cutespam import open_file
     from cutespam.db import filename_for_uid
 
     uid = UUID(ARGS.uid)
-    os.startfile(str(filename_for_uid(uid)))
+    open_file(str(filename_for_uid(uid)))
 
 
 def args(parser):

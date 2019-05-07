@@ -8,6 +8,8 @@ from cutespam.hashtree import HashTree
 class DBService:
     def __init__(self):
         self.db = db.connect_db()
+
+    def ping(self): return "pong"
            
 for name, f in db._functions.items():
     def wrapper(f, name):

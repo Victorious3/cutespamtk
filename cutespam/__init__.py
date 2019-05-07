@@ -1,4 +1,4 @@
-import urllib, time, json
+import urllib, time, json, os, sys, subprocess
 
 from functools import reduce
 from pathlib import Path
@@ -20,6 +20,13 @@ class JSONEncoder(json.JSONEncoder):
 
 from cutespam.meta import CuteMeta
 from cutespam.config import config
+
+def open_file(filename):
+    if sys.platform == "win32":
+        os.startfile(filename)
+    else:
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        subprocess.call([opener, filename])
 
 def partition(p, l):
     return reduce(lambda x, y: x[not p(y)].append(y) or x, l, ([], []))
