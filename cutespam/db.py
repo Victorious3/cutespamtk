@@ -456,7 +456,8 @@ def find_similar_images(uid: UUID, threshold: int, limit = 10, db: sqlite3.Conne
 
     meta = get_meta(uid, db = db)
     distance = ceil(config.hash_length * (1 - threshold))
-    hashes = __hashes.find_all_hamming_distance(meta.hash, distance, limit)
+    with get_hashes() as _hashes:
+        hashes = _hashes.find_all_hamming_distance(meta.hash, distance, limit)
     ret = []
 
     if hashes:
