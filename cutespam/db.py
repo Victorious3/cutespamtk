@@ -81,45 +81,46 @@ def connect_db():
 
 def init_db():
     global __db, __hashes
-    with __hashes_lock:
 
-        log.info("Scanning database")
 
-        refresh_cache = False
-        if not config.metadbf.exists() or not config.hashdbf.exists():
-            config.metadbf.touch(exist_ok = True)
-            refresh_cache = True
+    log.info("Scanning database")
 
-        log.info("Setting up database %r", str(config.metadbf))
+    refresh_cache = False
+    if not config.metadbf.exists() or not config.hashdbf.exists():
+        config.metadbf.touch(exist_ok = True)
+        refresh_cache = True
 
-        __db = connect_db()
-        __db.executescript(f"""
-            CREATE TABLE IF not EXISTS Metadata (
-                uid UUID PRIMARY KEY not null,
-                last_updated timestamp not null DEFAULT(strftime('%Y-%m-%d %H:%M:%f', 'now')),
-                hash TEXT not null,
-                caption TEXT,
-                author TEXT,
-                source TEXT,
-                group_id UUID,
-                date timestamp not null DEFAULT(strftime('%Y-%m-%d %H:%M:%f', 'now')),
-                rating Rating,
-                source_other PSet,
-                source_via PSet
-            ) WITHOUT ROWID;
+    log.info("Setting up database %r", str(config.metadbf))
 
-            CREATE TABLE IF not EXISTS Metadata_Keywords (
-                uid UUID not null,
-                keyword TEXT NOT NULL
-            );
+    __db = connect_db()
+    __db.executescript(f"""
+        CREATE TABLE IF not EXISTS Metadata (
+            uid UUID PRIMARY KEY not null,
+            last_updated timestamp not null DEFAULT(strftime('%Y-%m-%d %H:%M:%f', 'now')),
+            hash TEXT not null,
+            caption TEXT,
+            author TEXT,
+            source TEXT,
+            group_id UUID,
+            date timestamp not null DEFAULT(strftime('%Y-%m-%d %H:%M:%f', 'now')),
+            rating Rating,
+            source_other PSet,
+            source_via PSet
+        ) WITHOUT ROWID;
 
-            CREATE TABLE IF not EXISTS Metadata_Collections (
-                uid UUID not null,
-                collection TEXT NOT NULL CHECK (collection REGEXP '{config.tag_regex}')
-            );
-        """)
+        CREATE TABLE IF not EXISTS Metadata_Keywords (
+            uid UUID not null,
+            keyword TEXT NOT NULL
+        );
 
-        if refresh_cache:
+        CREATE TABLE IF not EXISTS Metadata_Collections (
+            uid UUID not null,
+            collection TEXT NOT NULL CHECK (collection REGEXP '{config.tag_regex}')
+        );
+    """)
+
+    if refresh_cache:
+        with __hashes_lock:
             __hashes = HashTree(config.hash_length)
 
             log.info("Loading folder %r into database", str(config.image_folder))
@@ -134,42 +135,42 @@ def init_db():
                 log.info("Writing to file...")
                 __hashes.write_to_file(config.hashdbf)
 
-        else:
-            with open(config.hashdbf, "rb") as hashdbfp:
-                log.info("Loading hashes from cache %r", str(config.hashdbf))
-                __hashes = HashTree.read_from_file(hashdbfp, config.hash_length)
+    else:
+        with open(config.hashdbf, "rb") as hashdbfp, __hashes_lock:
+            log.info("Loading hashes from cache %r", str(config.hashdbf))
+            __hashes = HashTree.read_from_file(hashdbfp, config.hash_length)
 
-        log.info("Catching up with image folder")
-        uuids_in_folder = set()
-        for image in config.image_folder.glob("*.*"):
-            if not image.is_file(): continue
-            if image.name.startswith("."): continue
-            try:
-                uuid = UUID(image.stem)
-                uuids_in_folder.add(uuid)
+    log.info("Catching up with image folder")
+    uuids_in_folder = set()
+    for image in config.image_folder.glob("*.*"):
+        if not image.is_file(): continue
+        if image.name.startswith("."): continue
+        try:
+            uuid = UUID(image.stem)
+            uuids_in_folder.add(uuid)
 
-            except: continue
-        uuids_in_database = set(d[0] for d in __db.execute("select uid from Metadata").fetchall())
+        except: continue
+    uuids_in_database = set(d[0] for d in __db.execute("select uid from Metadata").fetchall())
 
-        for uid in uuids_in_folder - uuids_in_database: # recently added
-            _load_file(filename_for_uid(uid), __db)
-        for uid in uuids_in_database - uuids_in_folder: # recently deleted
-            _remove_image(uid, __db)
+    for uid in uuids_in_folder - uuids_in_database: # recently added
+        _load_file(filename_for_uid(uid), __db)
+    for uid in uuids_in_database - uuids_in_folder: # recently deleted
+        _remove_image(uid, __db)
 
-        for uid in uuids_in_database:
-            try:
-                _save_file(filename_for_uid(uid), __db)
-            except FileNotFoundError: pass # was deleted earlier
+    for uid in uuids_in_database:
+        try:
+            _save_file(filename_for_uid(uid), __db)
+        except FileNotFoundError: pass # was deleted earlier
 
+    __db.commit()
+        
+
+    log.info("Done!")
+    def exit():
         __db.commit()
-            
+        __db.close()
 
-        log.info("Done!")
-        def exit():
-            __db.commit()
-            __db.close()
-
-        atexit.register(exit)
+    atexit.register(exit)
 
 def start_listeners():
     log.info("Listening for file changes")
@@ -269,6 +270,7 @@ def listen_for_db_changes():
                         meta.keywords = set(k[0] for k in keywords)
                         meta.collections = set(c[0] for c in collections)
                         meta.write()
+                        meta.release()
 
                         # Make sure that the entry in the database stays the same as the file
                         epoch = floor(time.mktime(db_last_updated.timetuple()) + 1) # precision problem on windows
