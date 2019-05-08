@@ -173,7 +173,6 @@ def download(data: dict):
         meta.source_other = set(data["src"])
     if "via" in data:
         meta.source_via = set(data["via"])
-        
 
     meta.write()
     meta.release() # Windows hack

@@ -378,6 +378,44 @@ def save_meta(meta: CuteMeta, db: sqlite3.Connection = None):
     db.commit()
 
 def _save_meta(meta: CuteMeta, timestamp, db: sqlite3.Connection):
+
+    # Sync data
+
+    db.execute("""
+        DELETE FROM Metadata_Keywords WHERE uid is ?
+    """, (meta.uid,))
+    db.execute("""
+        DELETE FROM Metadata_Collections WHERE uid is ?
+    """, (meta.uid,))
+
+    new_keywords = set(meta.keywords)
+    if meta.author: 
+        new_keywords.discard("missing:author")
+    else: new_keywords.add("missing:author")
+    if meta.caption:
+        new_keywords.discard("missing:caption")
+    else: new_keywords.add("missing:caption")
+    if meta.source:
+        new_keywords.discard("missing:source")
+    else: new_keywords.add("missing:source")
+    
+    if new_keywords != meta.keywords:   # if we changed anything
+        meta.keywords = new_keywords
+        timestamp = datetime.utcnow()   # make sure we set the correct timestamp
+
+    if meta.keywords:
+        db.executemany(f"""
+            INSERT INTO Metadata_Keywords VALUES (
+                ?, ?
+            ) 	
+        """, [(meta.uid, keyword) for keyword in meta.keywords])
+    if meta.collections:
+        db.executemany(f"""
+            INSERT INTO Metadata_Collections VALUES (
+                ?, ?
+            ) 	
+        """, [(meta.uid, collection) for collection in meta.collections])
+
     db.execute("""
         UPDATE Metadata SET
             last_updated = ?,
@@ -404,27 +442,6 @@ def _save_meta(meta: CuteMeta, timestamp, db: sqlite3.Connection):
 
         meta.uid
     ))
-
-    db.execute("""
-        DELETE FROM Metadata_Keywords WHERE uid is ?
-    """, (meta.uid,))
-    db.execute("""
-        DELETE FROM Metadata_Collections WHERE uid is ?
-    """, (meta.uid,))
-
-
-    if meta.keywords:
-        db.executemany(f"""
-            INSERT INTO Metadata_Keywords VALUES (
-                ?, ?
-            ) 	
-        """, [(meta.uid, keyword) for keyword in meta.keywords])
-    if meta.collections:
-        db.executemany(f"""
-            INSERT INTO Metadata_Collections VALUES (
-                ?, ?
-            ) 	
-        """, [(meta.uid, collection) for collection in meta.collections])
     
     db.commit()
 
