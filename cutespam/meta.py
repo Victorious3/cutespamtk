@@ -158,7 +158,7 @@ class CuteMeta(Meta):
     source: str        = Tag("Iptc.Application2.Source")           # primary source url, image file
     group_id: UUID     = Tag("Iptc.Application2.FixtureId")        # group id, same as the uid of the first image in that group
     collections: set   = Tag("Iptc.Application2.SuppCategory")     # repeated, collections of images
-    rating: Rating     = Tag("Iptc.Application2.Urgency")          # Rating of the image, ["s", "n", "q", "e"] TODO: Validate
+    rating: Rating     = Tag("Iptc.Application2.Urgency")          # Rating of the image, ["s", "n", "q", "e"]
     
     date: datetime     = Tag("Xmp.dc.date")        # Timestamp of when the image was imported
     source_other: set  = Tag("Xmp.dc.publisher")   # list of urls where the image is published
@@ -172,6 +172,31 @@ class CuteMeta(Meta):
         if not self.keywords:
             self.keywords = set()
         self.keywords |= set("character:" + k for k in characters)
+
+    def generate_keywords(self):
+        """ Syncs internal state. Returns True if changes have been made """
+
+        new_keywords = set(self.keywords) if self.keywords else set()
+
+        def missing(name, value):
+            if value:
+                new_keywords.discard("missing:" + name)
+            else: new_keywords.add("missing:" + name)
+
+        missing("author", self.author)
+        missing("source", self.source)
+        missing("caption", self.caption)
+        missing("rating", self.rating)
+
+        if self.collections:
+            for collection in self.collections:
+                new_keywords.add("collection:" + collection)
+        
+        if new_keywords != self.keywords:
+            self.keywords = new_keywords
+            return True
+        
+        return False
 
     @classmethod
     def from_db(cls, uid):

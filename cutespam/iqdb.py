@@ -13,6 +13,8 @@ from typing import Tuple
 from cutespam import CuteMeta
 from pathlib import Path
 
+from cutespam.providers import Provider
+
 URL = "https://iqdb.org/"
 
 class IQDBException(Exception): pass
@@ -77,7 +79,7 @@ def decode_results_nao(jsn):
     for url in data["ext_urls"]:
         yield Result(Service.Other, similarity, url, "????", (0, 0))
 
-def iqdb(url = None, file = None, saucenao = False):
+def iqdb(url = None, file = None, saucenao = False, threshold = None):
     if file:
         req = requests.post(URL, files = {Field.file: file})
     elif url:
@@ -115,4 +117,35 @@ def iqdb(url = None, file = None, saucenao = False):
                 results.append(result)
 
     results = sorted(results, key = lambda r: r.similarity, reverse = True)
+    if threshold:
+        results = [i for i in results if i.similarity >= threshold]
     return results
+
+
+def upscale(iqdb_res, resolution, service = "direct"):
+    found_img = None
+    src = []
+    meta = {}
+
+    # extract providers:
+    providers = sorted([Provider.for_url(r.url) for r in iqdb_res])
+    for provider in providers: provider.fetch()
+
+    for result, provider in zip(iqdb_res, providers):
+        if not provider.src: continue
+
+        src += provider.src
+        src += [provider.url]
+
+        meta.update(provider.meta) # TODO This might fail if it finds multiple metas
+
+        r_resolution = result.size[0] * result.size[1]
+        if not found_img and (r_resolution > resolution or service == "twitter"):
+            # Found a better image, yay
+            found_img = provider.src[0]
+            service = type(provider).service
+            resolution = r_resolution
+
+    meta["src"] = src
+
+    return found_img, meta, service

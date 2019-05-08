@@ -3,6 +3,8 @@ import argparse
 DESCRIPTION = "Fills missing metadata and syncs the internal state"
 
 def main(ARGS):
+    raise NotImplementedError() # TODO Not sure if needed anymore
+
     import os
 
     from pathlib import Path

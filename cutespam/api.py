@@ -14,7 +14,7 @@ from cutespam.meta import CuteMeta, Rating
 from cutespam.hash import hash_img
 from cutespam.db import find_similar_images_hash, filename_for_uid
 from cutespam.providers import Provider
-from cutespam.iqdb import iqdb
+from cutespam.iqdb import iqdb, upscale
 from cutespam.config import config
 
 class APIException(Exception): pass
@@ -81,49 +81,28 @@ def fetch_url(url) -> FetchUrlResult:
 class IQDBResult:
     img: str
     service: str
-    src: List[str]
+    # Other parameters as part of dict
 
 @apifun
 def iqdb_upscale(img, threshold = 0.9, service = None) -> IQDBResult:
-    results = [i for i in iqdb(url = img) if i.similarity >= threshold]
+    results = iqdb(url = img, threshold = threshold)
     if not results:
         raise ValueError("No result found")
 
     # need to download file to get size :/
-    # this means we need to download it multiple times, TODO make a cache? 
     with Image.open(get_cached_file(img)) as imgf:
         width, height = imgf.size
         resolution = width * height
 
-    found_img = None
-    src = []
-    meta = {}
-
-    # extract providers:
-    providers = sorted([Provider.for_url(r.url) for r in results])
-    for provider in providers: provider.fetch()
-
-    for result, provider in zip(results, providers):
-        if not provider.src: continue
-
-        src += provider.src
-        src += [provider.url]
-
-        meta.update(provider.meta) # TODO This might fail if it finds multiple metas
-
-        r_resolution = result.size[0] * result.size[1]
-        if not found_img and (r_resolution > resolution or service == "twitter"):
-            # Found a better image, yay
-            img = provider.src[0]
-            service = type(provider).service
-            resolution = r_resolution
+    found_img, meta, service = upscale(results, resolution, service)
 
     img = found_img or img
-    src = set(src)
-    try: src.remove(img) 
-    except: pass
     
-    result = IQDBResult(img = img, src = list(src), service = service)
+    src = set(meta["src"])
+    src.discard(img)
+    meta["src"] = list(src)
+    
+    result = IQDBResult(img = img, service = service)
     result.__dict__.update(meta)
     return result
 
@@ -158,22 +137,20 @@ def download(data: dict):
 
     if "author" in data: 
         meta.author = data["author"]
-        if meta.author:
-            meta.keywords |= set(["author:" + meta.author])
     if "caption" in data:
         meta.caption = data["caption"]
     if "character" in data: 
         meta.keywords |= set("character:" + c for c in data["character"])
     if "collections" in data: 
         meta.collections = set(data["collections"])
-        meta.keywords |= set("collection:" + c for c in data["collections"])
     if "rating" in data:
         meta.rating = Rating(data["rating"])
     if "src" in data:
         meta.source_other = set(data["src"])
     if "via" in data:
         meta.source_via = set(data["via"])
-
+    
+    meta.generate_keywords()
     meta.write()
     meta.release() # Windows hack
     shutil.move(str(file), str(config.image_folder / (str(meta.uid) + file.suffix)))
