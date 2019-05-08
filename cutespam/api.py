@@ -121,25 +121,19 @@ def download_or_show_similar(data: dict, threshold = 0.9) -> List[SimilarImage]:
         return [SimilarImage(s[0], s[1], filename_for_uid(s[1]).name) for s in similar]
     return download(data)
 
-@apifun
-def download(data: dict):
-    file = get_cached_file(data["img"])
-    meta: CuteMeta = CuteMeta.from_file(file)
+def read_meta_from_dict(meta, data):
+    meta.keywords = meta.keywords or set()
+
     if "uid" in data:
         meta.uid = UUID(data["uid"])
     else:
         meta.uid = uuid4()
-
-    meta.source = data["img"]
-    meta.keywords = set()
-    meta.hash = hash_img(file)
-    meta.date = datetime.utcnow()
-
+        
     if "author" in data: 
         meta.author = data["author"]
     if "caption" in data:
         meta.caption = data["caption"]
-    if "character" in data: 
+    if "character" in data:
         meta.keywords |= set("character:" + c for c in data["character"])
     if "collections" in data: 
         meta.collections = set(data["collections"])
@@ -149,6 +143,16 @@ def download(data: dict):
         meta.source_other = set(data["src"])
     if "via" in data:
         meta.source_via = set(data["via"])
+
+@apifun
+def download(data: dict):
+    file = get_cached_file(data["img"])
+    meta: CuteMeta = CuteMeta.from_file(file)
+    meta.source = data["img"]
+    meta.hash = hash_img(file)
+    meta.date = datetime.utcnow()
+
+    read_meta_from_dict(meta, data)
     
     meta.generate_keywords()
     meta.write()

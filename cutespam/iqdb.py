@@ -122,7 +122,7 @@ def iqdb(url = None, file = None, saucenao = False, threshold = None):
     return results
 
 
-def upscale(iqdb_res, resolution, service = "direct"):
+def upscale(iqdb_res, resolution, service = "file"):
     found_img = None
     src = []
     meta = {}
@@ -140,7 +140,7 @@ def upscale(iqdb_res, resolution, service = "direct"):
         meta.update(provider.meta) # TODO This might fail if it finds multiple metas
 
         r_resolution = result.size[0] * result.size[1]
-        if not found_img and (r_resolution > resolution or service == "twitter"):
+        if not found_img and (r_resolution > resolution or service in ("twitter", "file")):
             # Found a better image, yay
             found_img = provider.src[0]
             service = type(provider).service

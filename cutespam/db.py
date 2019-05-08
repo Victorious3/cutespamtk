@@ -34,7 +34,7 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 # Make sure only one thread talks to this
 
 __folder_lock = Lock()
-__hashes_lock = RLock()
+__hashes_lock = Lock()
 __hashes: HashTree = None
 
 @contextmanager
@@ -44,6 +44,11 @@ def get_hashes():
 
 __db: sqlite3.Connection = None
 __rpccon = None
+
+def pyro_release():
+    if __rpccon:
+        __rpccon._pyroRelease() # Pyro likes to log to non existent loggers if I don't do that
+atexit.register(pyro_release)
 
 _functions = {}
 def dbfun(fun):
@@ -120,20 +125,19 @@ def init_db():
     """)
 
     if refresh_cache:
-        with __hashes_lock:
-            __hashes = HashTree(config.hash_length)
+        __hashes = HashTree(config.hash_length)
 
-            log.info("Loading folder %r into database", str(config.image_folder))
+        log.info("Loading folder %r into database", str(config.image_folder))
 
-            for image in config.image_folder.glob("*.*"):
-                if not image.is_file(): continue
-                if image.name.startswith("."): continue
-                _load_file(image, __db)
+        for image in config.image_folder.glob("*.*"):
+            if not image.is_file(): continue
+            if image.name.startswith("."): continue
+            _load_file(image, __db)
 
-            __db.commit()
-            with open(config.hashdbf, "wb") as hashdbfp:
-                log.info("Writing to file...")
-                __hashes.write_to_file(config.hashdbf)
+        __db.commit()
+        with open(config.hashdbf, "wb") as hashdbfp, __hashes_lock:
+            log.info("Writing to file...")
+            __hashes.write_to_file(config.hashdbf)
 
     else:
         with open(config.hashdbf, "rb") as hashdbfp, __hashes_lock:
@@ -530,6 +534,11 @@ def __collect_uids_with_hashes(hashes, db: sqlite3.Connection):
 
 @dbfun
 def find_similar_images_hash(h: str, threshold: float, limit = 10, db: sqlite3.Connection = None):
+
+    assert 0 <= threshold <= 1
+    if limit > 100: limit = 100
+    if limit < 1: limit = 1
+
     found = False
     distance = ceil(config.hash_length * (1 - threshold))
 
