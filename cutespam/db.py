@@ -327,7 +327,8 @@ def _remove_image(uid: UUID, db: sqlite3.Connection):
 
     if cnthash == 1:
         with get_hashes() as hashes:
-            hashes.remove(imghash) # Only one hash by this name, it doesnt exist anymore now
+            try: hashes.remove(imghash) # Only one hash by this name, it doesnt exist anymore now
+            except KeyError: pass
 
 @dbfun
 def save_file(fp: Path, db: sqlite3.Connection = None):
