@@ -13,7 +13,7 @@ def main(ARGS):
 
     from cutespam import yn_choice
 
-    if not ARGS.file and not sys.stdin.isatty():
+    if ARGS.file and ARGS.file[0] == "-" and not sys.stdin.isatty():
         ARGS.file = sys.stdin.read().splitlines()
 
     for file in ARGS.file:
@@ -89,7 +89,7 @@ def args(parser):
         help = "Tag to set", choices = CuteMeta.tag_names())
     c_set.add_argument("value", nargs = "+", type = unescaped_string,
         help = "Values to set. Multiple values for list or set")
-    c_set.add_argument("file", nargs = "*").completer = UUIDFileCompleter
+    c_set.add_argument("file", nargs = "+").completer = UUIDFileCompleter
 
     c_add = tag_subcommand.add_parser("add",
         help = "Adds an additional value to a tag")
@@ -97,7 +97,7 @@ def args(parser):
         help = "Tag to add to", choices = CuteMeta.tag_names())
     c_add.add_argument("value", nargs = "+", type = unescaped_string,
         help = "Values to add")
-    c_add.add_argument("file", nargs = "*").completer = UUIDFileCompleter
+    c_add.add_argument("file", nargs = "+").completer = UUIDFileCompleter
 
     c_remove = tag_subcommand.add_parser("remove",
         help = "Removes a value from a tag")
@@ -105,12 +105,12 @@ def args(parser):
         help = "Tag to remove from", choices = CuteMeta.tag_names())
     c_remove.add_argument("value", nargs = "+", type = unescaped_string,
         help = "Values to remove")
-    c_remove.add_argument("file", nargs = "*").completer = UUIDFileCompleter
+    c_remove.add_argument("file", nargs = "+").completer = UUIDFileCompleter
 
     c_delete = tag_subcommand.add_parser("delete",
         help = "Deletes a tag completely")
     c_delete.add_argument("tag",
         help = "Tag to remove from", choices = CuteMeta.tag_names())
-    c_delete.add_argument("file", nargs = "*").completer = UUIDFileCompleter
+    c_delete.add_argument("file", nargs = "+").completer = UUIDFileCompleter
 
     return parser

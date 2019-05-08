@@ -7,8 +7,8 @@ from uuid import UUID
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileDeletedEvent
-from math import ceil
-from threading import Thread, RLock
+from math import ceil, floor
+from threading import Thread, Lock
 from contextlib import contextmanager
 from functools import wraps
 
@@ -33,7 +33,8 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 
 # Make sure only one thread talks to this
 
-__hashes_lock = RLock()
+__folder_lock = Lock()
+__hashes_lock = Lock()
 __hashes: HashTree = None
 
 @contextmanager
@@ -246,31 +247,33 @@ def listen_for_db_changes():
             last_updated = datetime.utcnow()
 
             for data in modified:
-                filename = filename_for_uid(data["uid"])
-                f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(filename))
-                db_last_updated = data["last_updated"]
-                if db_last_updated > f_last_updated:
-                    meta = CuteMeta.from_file(filename)
-                    log.info("Writing to file %r", str(filename))
-                    print("file:", f_last_updated, "database:", db_last_updated)
+                with __folder_lock:
+                    filename = filename_for_uid(data["uid"])
+                    f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(filename))
+                    db_last_updated = data["last_updated"]
+                    if db_last_updated > f_last_updated:
+                        meta = CuteMeta.from_file(filename)
+                        log.info("Writing to file %r", str(filename))
+                        print("file:", f_last_updated, "database:", db_last_updated)
 
-                    for name, v in zip(data.keys(), data):
-                        setattr(meta, name, v)
+                        for name, v in zip(data.keys(), data):
+                            setattr(meta, name, v)
 
-                    keywords = db.execute("""
-                        select keyword from Metadata_Keywords where uid = ?
-                    """, (data["uid"],)).fetchmany()
-                    collections = db.execute("""
-                        select collection from Metadata_Collections where uid = ?
-                    """, (data["uid"],)).fetchmany()
+                        keywords = db.execute("""
+                            select keyword from Metadata_Keywords where uid = ?
+                        """, (data["uid"],)).fetchmany()
+                        collections = db.execute("""
+                            select collection from Metadata_Collections where uid = ?
+                        """, (data["uid"],)).fetchmany()
 
-                    meta.keywords = set(k[0] for k in keywords)
-                    meta.collections = set(c[0] for c in collections)
+                        meta.keywords = set(k[0] for k in keywords)
+                        meta.collections = set(c[0] for c in collections)
+                        meta.write()
 
-                    meta.write()
-                    # Make sure that the entry in the database stays the same as the file
-                    epoch = time.mktime(db_last_updated.timetuple())
-                    os.utime(str(filename), (epoch, epoch))
+                        # Make sure that the entry in the database stays the same as the file
+                        epoch = floor(time.mktime(db_last_updated.timetuple()) + 1) # precision problem on windows
+                        os.utime(str(filename), (epoch, epoch))
+
     except KeyboardInterrupt:
         pass
                 
@@ -380,18 +383,20 @@ def save_file(fp: Path, db: sqlite3.Connection = None):
     db.commit()
 
 def _save_file(image: Path, db: sqlite3.Connection):
-    f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(str(image)))
-    uid = UUID(image.stem)
-    db_last_updated = db.execute("""
-        select last_updated from Metadata where uid is ?
-    """, (uid,)).fetchone()[0]
-    
-    if f_last_updated > db_last_updated:
-        log.info("Reading from file %r", str(image))
-        print("file:", f_last_updated, "database:", db_last_updated)
-        meta = CuteMeta.from_file(image)
-        _save_meta(meta, f_last_updated, db)
-        db.commit()
+    with __folder_lock:
+        f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(str(image)))
+        uid = UUID(image.stem)
+        db_last_updated = db.execute("""
+            select last_updated from Metadata where uid is ?
+        """, (uid,)).fetchone()[0]
+        
+        if f_last_updated > db_last_updated:
+            log.info("Reading from file %r", str(image))
+            print("file:", f_last_updated, "database:", db_last_updated)
+            
+            meta = CuteMeta.from_file(image)
+            _save_meta(meta, f_last_updated, db)
+            db.commit()
 
 @dbfun
 def save_meta(meta: CuteMeta, db: sqlite3.Connection = None):
@@ -421,6 +426,7 @@ def _save_meta(meta: CuteMeta, timestamp, db: sqlite3.Connection):
     else: new_keywords.add("missing:source")
     
     if new_keywords != meta.keywords:   # if we changed anything
+        log.info("Updated autogenerated keywords")
         meta.keywords = new_keywords
         timestamp = datetime.utcnow()   # make sure we set the correct timestamp
 
@@ -463,8 +469,6 @@ def _save_meta(meta: CuteMeta, timestamp, db: sqlite3.Connection):
 
         meta.uid
     ))
-    
-    db.commit()
 
 @dbfun
 def load_file(image, db: sqlite3.Connection):

@@ -12,7 +12,7 @@ def main(ARGS):
     from cutespam import db
     from cutespam.meta import CuteMeta
 
-    if not ARGS.file and not sys.stdin.isatty():
+    if ARGS.file and ARGS.file[0] == "-" and not sys.stdin.isatty():
         ARGS.file = sys.stdin.read().splitlines()
 
     for file in ARGS.file:
@@ -37,4 +37,4 @@ def args(parser):
         help = "List of tags to include")
     parser.add_argument("--json", action = "store_true",
         help = "Output as json")
-    parser.add_argument("file", nargs = "*").completer = UUIDFileCompleter
+    parser.add_argument("file", nargs = "+").completer = UUIDFileCompleter
