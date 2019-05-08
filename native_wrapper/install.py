@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys, os, ctypes, json, contextlib
+import subprocess
 from pathlib import Path
 
 EXTENSION = "moe.nightfall.booru"
@@ -14,6 +15,8 @@ PATH_CHROMIUM_SYSTEM = Path("/etc/chromium/NativeMessagingHosts")
 PATH_CHROME_USER = Path("~/.config/google-chrome/NativeMessagingHosts").expanduser()
 PATH_CHROMIUM_USER = Path("~/.config/chromium/NativeMessagingHosts").expanduser()
 
+PATH_DIR_JUNCTION = DIR.parent / "extension" / "image"
+
 if os.name == "nt":
     IS_ROOT = ctypes.windll.shell32.IsUserAnAdmin() != 0
 else:
@@ -21,6 +24,13 @@ else:
 
 def install():
     print("Installing native wrapper for browser extension")
+    # check if cutespam is installed, this also generates the config
+    try:
+        import cutespam
+    except ModuleNotFoundError:
+        print("Cutespam not installed, exiting!")
+        sys.exit(-1)
+
     if os.name == "nt":
         import winreg
         ROOT_KEY = winreg.HKEY_LOCAL_MACHINE if IS_ROOT else winreg.HKEY_CURRENT_USER
@@ -33,13 +43,19 @@ def install():
 
         winreg.CloseKey(KEY_CHROME)
         winreg.CloseKey(KEY_FF)
+
+        # Directory junction for extension
+        print(str(PATH_DIR_JUNCTION))
+        print(str(cutespam.config.image_folder))
+        subprocess.run(["mklink", "/J", str(PATH_DIR_JUNCTION), str(cutespam.config.image_folder)], shell = True)
+
     elif os.name == "posix":
-        with open(Path(__file__).parent / "chrome" / (EXTENSION + ".json"), "r") as chrf:
+        with open(DIR / "chrome" / (EXTENSION + ".json"), "r") as chrf:
             manifest_chrome = json.load(chrf)
-        with open(Path(__file__).parent / "firefox" / (EXTENSION + ".json"), "r") as fff:
+        with open(DIR / "firefox" / (EXTENSION + ".json"), "r") as fff:
             manifest_ff = json.load(fff)
 
-        native_wrapper = (Path(__file__).parent / "native-wrapper.sh").resolve().absolute()
+        native_wrapper = (DIR / "native-wrapper.sh").resolve().absolute()
 
         manifest_chrome["path"] = str(native_wrapper)
         manifest_ff["path"] = str(native_wrapper)
@@ -70,6 +86,8 @@ def remove():
         ROOT_KEY = winreg.HKEY_LOCAL_MACHINE if IS_ROOT else winreg.HKEY_CURRENT_USER
         winreg.DeleteKey(ROOT_KEY, REG_CHROME)
         winreg.DeleteKey(ROOT_KEY, REG_FF)
+
+        subprocess.run(["rmdir", str(PATH_DIR_JUNCTION)], shell = True)
     elif os.name == "posix":
         if IS_ROOT:
             with contextlib.suppress(FileNotFoundError): (PATH_CHROME_SYSTEM / (EXTENSION + ".json")).unlink()

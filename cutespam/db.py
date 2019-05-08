@@ -214,9 +214,11 @@ def listen_for_file_changes():
         
         def on_deleted(self, event):
             image = Path(event.src_path)
-            if not self.is_image(image): return
+            if image.name.startswith("."): return False
+            try:
+                uid = UUID(image.stem)
+            except: return
             
-            uid = UUID(image.stem)
             remove_image(uid, db = self.db)
 
         def on_modified(self, event):
@@ -338,7 +340,8 @@ def _remove_image(uid: UUID, db: sqlite3.Connection):
 
     if cnthash == 1:
         with get_hashes() as hashes:
-            hashes.remove(imghash) # Only one hash by this name, it doesnt exist anymore now
+            try: hashes.remove(imghash) # Only one hash by this name, it doesnt exist anymore now
+            except KeyError: pass
 
 @dbfun
 def save_file(fp: Path, db: sqlite3.Connection = None):
