@@ -290,13 +290,20 @@ def filename_for_uid(uid) -> Path:
 
 @dbfun
 def query(keyword = None, not_keyword = None, author = None, limit = None, db: sqlite3.Connection = None):
-    uids = get_all_uids(db = db)
-    if author:
-        uids &= set(d[0] for d in db.execute("select uid from Metadata where author is ?", (author,)))
+    all_uids = get_all_uids(db = db)
+    uids = set(all_uids)
+
+    def select_keywords(keywords):
+        return set(d[0] for d in db.execute(
+            f"select uid from Metadata_Keywords where keyword in ({','.join('?' for k in keywords)})", 
+            tuple(keywords)))
+
+    if author is not None:
+        uids &= set(d[0] for d in db.execute("select uid from Metadata where author is ?", (author or None,)))
     if keyword: 
-        uids &= set(d[0] for d in db.execute(f"select uid from Metadata_Keywords where keyword in ({','.join('?' for k in keyword)})", tuple(keyword)))
+        uids &= select_keywords(keyword)
     if not_keyword:
-        uids &= set(d[0] for d in db.execute(f"select uid from Metadata_Keywords where keyword not in ({','.join('?' for k in keyword)})", tuple(keyword)))
+        uids &= all_uids - select_keywords(not_keyword)
 
     if limit and len(uids) > limit:
         return set(list(uids)[:limit])
