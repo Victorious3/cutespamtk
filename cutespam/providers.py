@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from xml.dom import minidom
 
 from cutespam import make_request, decode_all
+from cutespam.config import config
 
 
 class Provider:
@@ -58,7 +59,7 @@ class Other(Provider):
     regex = r".*"
 
 class Direct(Provider):
-    regex = r".*\.(jpg|jpeg|png)$"
+    regex = r".*(" + "|".join(config.extensions) + ")$"
     def _fetch(self):
         self.src = [self.url]
 

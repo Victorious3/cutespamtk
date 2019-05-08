@@ -45,7 +45,7 @@ def get_cached_file(img) -> Path:
     if not file.exists():
         req = requests.get(img)
         mime = req.headers["content-type"]
-        if mime == "image/jpeg":
+        if mime == "image/jpeg":    # TODO respect config.extensions
             ext = ".jpg"
         elif mime == "image/png":
             ext = ".png"

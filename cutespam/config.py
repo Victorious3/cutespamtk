@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Tuple
 
 @dataclass
 class Config:
@@ -15,6 +16,7 @@ class Config:
     image_folder: Path = "~/Pictures/Cutespam"
     cache_folder: Path = None
 
+    extensions: Tuple[str] = ("jpg", "png", "jpeg")
     tag_regex: str = r"[!-)+-9;-~]+"
 
 config = Config()
@@ -68,5 +70,7 @@ def _read_config():
     config.imgcache.mkdir(parents = True, exist_ok = True)
 
     config.tag_regex = config.tag_regex.replace("'", "\\'").replace('"', '\\"')
+
+    config.extensions = ["." + e for e in config.extensions]
     
 _read_config()

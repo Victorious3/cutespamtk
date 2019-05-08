@@ -193,11 +193,14 @@ def listen_for_file_changes():
             return self._db
 
         #def on_any_event(self, event):
-        #    log.info("%s %r", type(event), event.src_path)
+        #    log.info("%s %r %r", type(event), getattr(event, "src_path", None), getattr(event, "dest_path", None))
 
         @staticmethod
-        def is_image(file):
-            if not file.is_file(): return False
+        def is_image(file: Path, is_file = True):
+            if is_file and not file.is_file(): return False
+            # This is only here because mad lad exiv2 creates temporary files without giving them any
+            # other sort of indicator. Did they have to be in the same folder? No. Did exiv2 care? NO.
+            if file.suffix not in config.extensions: return False
             if file.name.startswith("."): return False
             try:
                 UUID(file.stem)
@@ -216,11 +219,11 @@ def listen_for_file_changes():
         
         def on_deleted(self, event):
             image = Path(event.src_path)
-            if image.name.startswith("."): return False
+            if not self.is_image(image, is_file = False): return
+
             try:
                 uid = UUID(image.stem)
             except: return
-            
             remove_image(uid, db = self.db)
 
         def on_modified(self, event):
@@ -270,7 +273,6 @@ def listen_for_db_changes():
                         meta.keywords = set(k[0] for k in keywords)
                         meta.collections = set(c[0] for c in collections)
                         meta.write()
-                        meta.release()
 
                         # Make sure that the entry in the database stays the same as the file
                         epoch = floor(time.mktime(db_last_updated.timetuple()) + 1) # precision problem on windows
@@ -284,12 +286,9 @@ def filename_for_uid(uid) -> Path:
         uid = UUID(str)
 
     filename = config.image_folder / str(uid)
-    filename = filename.with_suffix(".jpg")
-    if filename.exists(): return filename
-    filename = filename.with_suffix(".png")
-    if filename.exists(): return filename
-    filename = filename.with_suffix(".jpeg")
-    if filename.exists(): return filename
+    for ext in config.extensions:
+        filename = filename.with_suffix(ext)
+        if filename.exists(): return filename
     
     raise FileNotFoundError("No file for uuid %s found", uid)
 
