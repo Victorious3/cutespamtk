@@ -217,7 +217,7 @@ def listen_for_file_changes():
             if image.name.startswith("."): return False
             try:
                 uid = UUID(image.stem)
-            except: pass
+            except: return
             
             remove_image(uid, db = self.db)
 
