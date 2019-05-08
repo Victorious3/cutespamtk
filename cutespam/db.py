@@ -214,9 +214,11 @@ def listen_for_file_changes():
         
         def on_deleted(self, event):
             image = Path(event.src_path)
-            if not self.is_image(image): return
+            if image.name.startswith("."): return False
+            try:
+                uid = UUID(image.stem)
+            except: pass
             
-            uid = UUID(image.stem)
             remove_image(uid, db = self.db)
 
         def on_modified(self, event):
