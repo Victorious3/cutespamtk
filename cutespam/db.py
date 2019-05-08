@@ -289,8 +289,18 @@ def filename_for_uid(uid) -> Path:
     raise FileNotFoundError("No file for uuid %s found", uid)
 
 @dbfun
-def query(query, params = (), db: sqlite3.Connection = None):
-    return db.executescript(query, params)
+def query(keyword = None, not_keyword = None, author = None, limit = None, db: sqlite3.Connection = None):
+    uids = get_all_uids(db = db)
+    if author:
+        uids &= set(d[0] for d in db.execute("select uid from Metadata where author is ?", (author,)))
+    if keyword: 
+        uids &= set(d[0] for d in db.execute(f"select uid from Metadata_Keywords where keyword in ({','.join('?' for k in keyword)})", tuple(keyword)))
+    if not_keyword:
+        uids &= set(d[0] for d in db.execute(f"select uid from Metadata_Keywords where keyword not in ({','.join('?' for k in keyword)})", tuple(keyword)))
+
+    if limit and len(uids) > limit:
+        return set(list(uids)[:limit])
+    return uids
 
 @dbfun
 def get_tab_complete_uids(uidstr: str, db: sqlite3.Connection = None):
