@@ -109,7 +109,7 @@ def init_db():
 
             CREATE TABLE IF not EXISTS Metadata_Keywords (
                 uid UUID not null,
-                keyword TEXT NOT NULL CHECK (keyword REGEXP '{config.tag_regex}')
+                keyword TEXT NOT NULL
             );
 
             CREATE TABLE IF not EXISTS Metadata_Collections (
