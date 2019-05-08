@@ -9,7 +9,9 @@ def main(ARGS):
     filtered = query(
         keyword = ARGS.keyword, 
         not_keyword = ARGS.not_keyword, 
-        author = ARGS.author, 
+        author = ARGS.author,
+        caption = ARGS.caption,
+        source = ARGS.source,
         limit = ARGS.limit
     )
 
@@ -28,6 +30,10 @@ def args(parser):
         help = "Count the number of results instead of emitting them")
     parser.add_argument("--author",
         help = "Filters for author")
+    parser.add_argument("--caption",
+        help = "Filters for caption")
+    parser.add_argument("--source",
+        help = "Filters for source")
     parser.add_argument("--keyword", nargs = "+", default = [],
         help = "Filters for keywords")
     parser.add_argument("--not-keyword", nargs = "+", default = [],

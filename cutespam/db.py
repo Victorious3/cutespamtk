@@ -289,7 +289,11 @@ def filename_for_uid(uid) -> Path:
     raise FileNotFoundError("No file for uuid %s found", uid)
 
 @dbfun
-def query(keyword = None, not_keyword = None, author = None, limit = None, db: sqlite3.Connection = None):
+def query(
+    keyword = None, not_keyword = None,
+    author = None, caption = None, source = None,
+    limit = None, db: sqlite3.Connection = None):
+
     all_uids = get_all_uids(db = db)
     uids = set(all_uids)
 
@@ -298,8 +302,18 @@ def query(keyword = None, not_keyword = None, author = None, limit = None, db: s
             f"select uid from Metadata_Keywords where keyword in ({','.join('?' for k in keywords)})", 
             tuple(keywords)))
 
+    def select_single(name, value):
+        return set(d[0] for d in db.execute(
+            f"select uid from Metadata where {name} {'is' if value == '' else 'like'} ?", (value or None,)
+        ))
+
     if author is not None:
-        uids &= set(d[0] for d in db.execute("select uid from Metadata where author is ?", (author or None,)))
+        uids &= select_single("author", author)
+    if caption is not None:
+        uids &= select_single("caption", caption)
+    if source is not None:
+        uids &= select_single("source", source)
+
     if keyword: 
         uids &= select_keywords(keyword)
     if not_keyword:
