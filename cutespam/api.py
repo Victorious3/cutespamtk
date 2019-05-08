@@ -158,7 +158,8 @@ def download(data: dict):
 
     if "author" in data: 
         meta.author = data["author"]
-        meta.keywords |= set(["author:" + meta.author])
+        if meta.author:
+            meta.keywords |= set(["author:" + meta.author])
     if "caption" in data:
         meta.caption = data["caption"]
     if "character" in data: 

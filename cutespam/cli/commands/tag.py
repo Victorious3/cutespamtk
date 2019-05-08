@@ -34,13 +34,15 @@ def main(ARGS):
             except ValueError:
                 print("Invalid date format, use YY-MM-DD HH:MM:SS")
                 return
+        else: 
+            # Make sure that we can convert into it!
+            val = tpe(val)
 
         curr_v = getattr(cute_meta, tag)   
         if curr_v and issubclass(tpe, (list, set)):
             if not yn_choice("You are about to overwrite multiple values, proceed?"): return
         
-        # Make sure that we can convert into it!
-        setattr(cute_meta, tag, tpe(val))
+        setattr(cute_meta, tag, val)
     elif ARGS.subcommand == "delete":
         setattr(cute_meta, tag, None)
     elif ARGS.subcommand == "add":

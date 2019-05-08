@@ -4,42 +4,24 @@ from cutespam.meta import CuteMeta # This is needed for below
 DESCRIPTION = "Filters filenames for tags or properties"
 
 def main(ARGS):
-    import sys
-    import fileinput
-    from glob import glob
-    from pathlib import Path
-
-    def print_path(fp):
-        if ARGS.uri:
-            print(Path(fp).absolute().as_uri())
-        else:
-            print(fp)
-
-    if ARGS.files:
-        files = sum([glob(str(f)) for f in ARGS.files], [])
-    elif not sys.stdin.isatty():
-        files = [f.replace("\n", "") for f in fileinput.input('-')]
-    else:
-        files = glob("*.*")
+    from cutespam.db import get_all_uids, filename_for_uid
 
     filtered = []
-    for fp in files:
-        try: cute_meta = CuteMeta.from_file(Path(fp))
-        except (FileNotFoundError, TypeError): continue
+    for uid in get_all_uids():
+        cute_meta = CuteMeta.from_db(uid)
 
-        keywords = getattr(cute_meta, "keywords", set())
-        if ARGS.tag and not set(ARGS.tag).issubset(keywords): continue
-        if ARGS.not_tag and set(ARGS.not_tag).intersection(keywords): continue
-        filtered.append(fp)
-    for fp in filtered:
-        print_path(fp)
+        keywords = cute_meta.keywords or set()
+        if ARGS.keyword and not set(ARGS.keyword).issubset(keywords): continue
+        if ARGS.not_keyword and set(ARGS.not_keyword).intersection(keywords): continue
+        filtered.append(uid)
+
+    for uid in filtered:
+        print(filename_for_uid(uid).absolute().as_uri() if ARGS.uri else uid)
 
 def args(parser):
     parser.add_argument("--uri", action = "store_true",
          help = "Emits absolute file:// URIs instead of relative paths")
-    parser.add_argument("--tag", nargs = "+", default = [], choices = CuteMeta.tag_names(),
-        help = "Filters for tags")
-    parser.add_argument("--not-tag", nargs = "+", default = [],
-        help = "Filters for missing tags")
-    parser.add_argument("files", nargs = "*",
-        help = "Files to filter")
+    parser.add_argument("--keyword", nargs = "+", default = [],
+        help = "Filters for keywords")
+    parser.add_argument("--not-keyword", nargs = "+", default = [],
+        help = "Filters for missing missing keywords")

@@ -287,6 +287,10 @@ def filename_for_uid(uid) -> Path:
     raise FileNotFoundError("No file for uuid %s found", uid)
 
 @dbfun
+def query(query, params = (), db: sqlite3.Connection = None):
+    return db.executescript(query, params)
+
+@dbfun
 def get_tab_complete_uids(uidstr: str, db: sqlite3.Connection = None):
     uidstr = uidstr.replace("-", "")
     """ Returns a list of tab completions for a starting uid """
@@ -301,9 +305,16 @@ def get_all_uids(db: sqlite3.Connection = None):
 @dbfun
 def get_meta(uid: UUID, db: sqlite3.Connection = None):
     meta = CuteMeta(uid = uid, filename = filename_for_uid(uid))
-    res = db.execute("select * from Metadata where uid is ?", (str(uid.hex),)).fetchone()
+    uidstr = str(uid.hex)
+    res = db.execute("select * from Metadata where uid is ?", (uidstr,)).fetchone()
     for name, v in zip(res.keys(), res):
         setattr(meta, name, v)
+
+    keywords = db.execute("select keyword from Metadata_Keywords where uid is ?", (uidstr,)).fetchall()
+    meta.keywords = set(k[0] for k in keywords)
+    collections = db.execute("select collection from Metadata_Collections where uid is ?", (uidstr,)).fetchall()
+    meta.collections = set(c[0] for c in collections)
+
     return meta
 
 @dbfun

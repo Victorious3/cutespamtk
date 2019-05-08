@@ -175,15 +175,14 @@ class CuteMeta(Meta):
 
     @classmethod
     def from_db(cls, uid):
+        from cutespam import db
         if isinstance(uid, str):
             uid = UUID(uid)
         return db.get_meta(uid)
 
     def write(self):
+        from cutespam import db
         if self._db_uid:
             db.save_meta(self)
         else:
             super().write()
-
-
-from cutespam import db # Circualar dependency
