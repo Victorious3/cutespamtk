@@ -12,6 +12,7 @@ def main(ARGS):
         author = ARGS.author,
         caption = ARGS.caption,
         source = ARGS.source,
+        rating = ARGS.rating,
         limit = ARGS.limit
     )
 
@@ -34,6 +35,8 @@ def args(parser):
         help = "Filters for caption")
     parser.add_argument("--source",
         help = "Filters for source")
+    parser.add_argument("--rating",
+        help = "Filters for rating")
     parser.add_argument("--keyword", nargs = "+", default = [],
         help = "Filters for keywords")
     parser.add_argument("--not-keyword", nargs = "+", default = [],

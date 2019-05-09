@@ -300,6 +300,7 @@ def filename_for_uid(uid) -> Path:
 def query(
     keyword = None, not_keyword = None,
     author = None, caption = None, source = None,
+    rating = None,
     limit = None, db: sqlite3.Connection = None):
 
     all_uids = get_all_uids(db = db)
@@ -321,6 +322,8 @@ def query(
         uids &= select_single("caption", caption)
     if source is not None:
         uids &= select_single("source", source)
+    if rating is not None:
+        uids &= select_single("rating", rating)
 
     if keyword: 
         uids &= select_keywords(keyword)

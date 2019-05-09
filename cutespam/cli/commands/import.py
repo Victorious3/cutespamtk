@@ -21,6 +21,17 @@ def main(ARGS):
     
     file = Path(ARGS.file)
 
+    meta = CuteMeta.from_file(file)
+    hash_meta(meta)
+
+    similar = find_similar_images_hash(meta.hash, 0.9)
+    if similar:
+        print()
+        print("Found potential duplicates:")
+        for s in similar:
+            print(f"{s[0]:.1%}: {filename_for_uid(s[1]).resolve().as_uri() if ARGS.uri else s[1]}")
+        if not ARGS.add_duplicate and (ARGS.skip_duplicate or not yn_choice("Proceed?")): return
+
     with Image.open(file) as imgf:
         width, height = imgf.size
         resolution = width * height
@@ -32,15 +43,13 @@ def main(ARGS):
     
     source, data, service = upscale(result, resolution)
     if not source:
-        if ARGS.skip_no_iqdb or not yn_choice("No relevant images found. Add anyways?"): return
+        if not ARGS.add_no_iqdb and (ARGS.skip_no_iqdb or not yn_choice("No relevant images found. Add anyways?")): return
     else: print("Found image on", service)
     
-    meta = CuteMeta.from_file(file)
+    
     meta.uid = uuid4()
     meta.source = source
     meta.date = datetime.utcnow()
-
-    hash_meta(meta)
 
     if data:
         read_meta_from_dict(meta, data)
@@ -50,14 +59,6 @@ def main(ARGS):
     print("Metadata:")
     print(meta)
 
-    similar = find_similar_images_hash(meta.hash, 0.9)
-    if similar:
-        print()
-        print("Found potential duplicates:")
-        for s in similar:
-            print(f"{s[0]:.1%}: {filename_for_uid(s[1]).resolve().as_uri() if ARGS.uri else s[1]}")
-        if ARGS.skip_duplicate or not yn_choice("Proceed?"): return
-    
     meta.write()
     meta.release()
 
@@ -71,7 +72,11 @@ def args(parser):
     parser.add_argument("--uri", action = "store_true")
     parser.add_argument("--skip-duplicate", action = "store_true",
         help = "Skips duplicates instead of asking")
+    parser.add_argument("--add-duplicate", action = "store_true",
+        help = "Adds duplicates instead of asking")   
     parser.add_argument("--skip-no-iqdb", action = "store_true",
         help = "Skips an image if no iqdb result was found")
+    parser.add_argument("--add-no-iqdb", action = "store_true",
+        help = "Adds an image if no iqdb result was found")
     parser.add_argument("-m", "--move", action = "store_true",
         help = "If set to true, the file will be moved instead of copied")
