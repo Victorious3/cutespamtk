@@ -419,7 +419,7 @@ def _save_meta(meta: CuteMeta, timestamp, db: sqlite3.Connection):
         timestamp = datetime.utcnow() # make sure we set the correct timestamp
 
     db.execute("""
-        DELETE FROM Metadata_Keywords WHERE uid is ?h
+        DELETE FROM Metadata_Keywords WHERE uid is ?
     """, (meta.uid,))
     db.execute("""
         DELETE FROM Metadata_Collections WHERE uid is ?
