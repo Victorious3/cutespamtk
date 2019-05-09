@@ -20,7 +20,7 @@ def main(ARGS):
     from cutespam.db import find_similar_images_hash, filename_for_uid
     
     file = Path(ARGS.file)
-    
+
     with Image.open(file) as imgf:
         width, height = imgf.size
         resolution = width * height
@@ -32,7 +32,7 @@ def main(ARGS):
     
     source, data, service = upscale(result, resolution)
     if not source:
-        if not yn_choice("No relevant images found. Add anyways?"): return
+        if ARGS.skip_no_iqdb or not yn_choice("No relevant images found. Add anyways?"): return
     else: print("Found image on", service)
     
     meta = CuteMeta.from_file(file)
@@ -56,7 +56,7 @@ def main(ARGS):
         print("Found potential duplicates:")
         for s in similar:
             print(f"{s[0]:.1%}: {filename_for_uid(s[1]).resolve().as_uri() if ARGS.uri else s[1]}")
-        if not yn_choice("Proceed?"): return
+        if ARGS.skip_duplicate or not yn_choice("Proceed?"): return
     
     meta.write()
     meta.release()
@@ -69,5 +69,9 @@ def main(ARGS):
 def args(parser):
     parser.add_argument("file")
     parser.add_argument("--uri", action = "store_true")
-    parser.add_argument("--move", action = "store_true",
+    parser.add_argument("--skip-duplicate", action = "store_true",
+        help = "Skips duplicates instead of asking")
+    parser.add_argument("--skip-no-iqdb", action = "store_true",
+        help = "Skips an image if no iqdb result was found")
+    parser.add_argument("-m", "--move", action = "store_true",
         help = "If set to true, the file will be moved instead of copied")
