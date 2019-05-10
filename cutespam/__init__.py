@@ -1,4 +1,5 @@
 import urllib, time, json, os, sys, subprocess
+import logging
 
 from functools import reduce
 from pathlib import Path
@@ -18,8 +19,14 @@ class JSONEncoder(json.JSONEncoder):
             return getattr(obj, "__dict__")
         return json.JSONEncoder.default(self, obj)
 
-from cutespam.meta import CuteMeta
 from cutespam.config import config
+
+log = logging.Logger("db", level = logging.INFO)
+if config.trace_debug: 
+    log.setLevel(logging.DEBUG)
+log.addHandler(logging.StreamHandler(sys.stdout))
+
+from cutespam.meta import CuteMeta
 
 def open_file(filename):
     if sys.platform == "win32":

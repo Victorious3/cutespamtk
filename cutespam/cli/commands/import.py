@@ -6,11 +6,10 @@ DESCRIPTION = "Imports an image file. Uses IQDB to fetch metadata"
 def main(ARGS):
     import shutil, time, sys
     from PIL import Image
-    from uuid import UUID, uuid4
+    from uuid import uuid4
     from datetime import datetime
     from pathlib import Path
 
-    import cutespam.db
     from cutespam import yn_choice
     from cutespam.api import read_meta_from_dict
     from cutespam.hash import hash_meta

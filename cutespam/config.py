@@ -2,8 +2,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Tuple
 
+class BaseConfig:
+    # Values that can't be modified (i.e they depend on other settings)
+    metadbf: Path
+    hashdbf: Path
+    imgcache: Path
+
 @dataclass
-class Config:
+class Config(BaseConfig):
     service_port: int = 14400
     hash_length: int = 256
 
@@ -18,6 +24,8 @@ class Config:
 
     extensions: Tuple[str] = ("jpg", "png", "jpeg")
     tag_regex: str = r"[!-)+-9;-~]+"
+
+    trace_debug: bool = False
 
 config = Config()
 
@@ -72,5 +80,4 @@ def _read_config():
     config.tag_regex = config.tag_regex.replace("'", "\\'").replace('"', '\\"')
 
     config.extensions = ["." + e for e in config.extensions]
-    
 _read_config()

@@ -1,5 +1,6 @@
 
 import Pyro4, signal
+import argparse
 
 from cutespam import db
 from cutespam.config import config
@@ -22,6 +23,13 @@ for name, f in db._functions.items():
 
 
 def main():
+    parser = argparse.ArgumentParser("Database service")
+    parser.add_argument("-t", "--trace", action = "store_true")
+    ARGS = parser.parse_args()
+
+    if ARGS.trace:
+        config.trace_debug = True
+
     db.init_db()
     db.start_listeners() 
 

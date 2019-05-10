@@ -12,6 +12,7 @@ from threading import Thread, Lock, RLock
 from contextlib import contextmanager
 from functools import wraps
 
+from cutespam import log
 from cutespam.hashtree import HashTree
 from cutespam.config import config
 from cutespam.meta import CuteMeta, Rating
@@ -27,9 +28,6 @@ sqlite3.register_adapter(Rating, lambda enum: enum.value)
 sqlite3.register_converter("Rating", lambda v: Rating(v.decode()))
 sqlite3.register_adapter(set, lambda s: json.dumps(list(s)))
 sqlite3.register_converter("PSet", lambda v: set(json.loads(v.decode())))
-
-log = logging.Logger("db")
-log.addHandler(logging.StreamHandler(sys.stdout))
 
 # Make sure only one thread talks to this
 
@@ -196,8 +194,9 @@ def listen_for_file_changes():
             self._db = connect_db()
             return self._db
 
-        #def on_any_event(self, event):
-        #    log.info("%s %r %r", type(event), getattr(event, "src_path", None), getattr(event, "dest_path", None))
+        def on_any_event(self, event):
+            if config.trace_debug:
+                log.info("%s %r %r", type(event), getattr(event, "src_path", None), getattr(event, "dest_path", None))
 
         @staticmethod
         def is_image(file: Path, is_file = True):
@@ -476,7 +475,7 @@ def _load_file(image: Path, db: sqlite3.Connection):
     if not meta.uid: return
     if not meta.hash: return
 
-    log.debug("Loading %r", str(image))
+    log.info("Loading %r", str(image))
 
     # Sync data
     if meta.generate_keywords():
