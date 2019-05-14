@@ -7,6 +7,8 @@ from enum import Enum
 from uuid import UUID
 from datetime import datetime
 
+BASE_PATH = Path(__file__).parent
+
 class JSONEncoder(json.JSONEncoder):
     def default(self, obj): # pylint: disable=E0202
         if isinstance(obj, set):

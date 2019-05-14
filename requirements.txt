@@ -1,4 +1,4 @@
-py3exiv2>=0.6.1
+lxml>=4.3.3
 validators>=0.12.5
 imagehash>=4.0
 clint>=0.5.1

@@ -52,23 +52,26 @@ def test_tree_serialization():
 
     assert first == second
 
+def find_all_hamming_distance(tree, *args):
+    return set(v[1] for v in tree.find_all_hamming_distance(*args))
+
 # Test on known trees
 def test_find_hamming_distance_simple():
     tree = HashTree(4)
     all_values = set([0b1111, 0b1110, 0b1011, 0b0010, 0b0001, 0b0000])
     tree |= all_values
 
-    assert tree.find_all_hamming_distance(0b1111, 0) == set()
-    assert tree.find_all_hamming_distance(0b1111, 1) == set([0b1110, 0b1011])
-    assert tree.find_all_hamming_distance(0b1111, 2) == set([0b1110, 0b1011])
-    assert tree.find_all_hamming_distance(0b1111, 3) == set([0b1110, 0b1011, 0b0010, 0b0001])
-    assert tree.find_all_hamming_distance(0b1111, 4) == all_values - set([0b1111])
+    assert find_all_hamming_distance(tree, 0b1111, 0) == set()
+    assert find_all_hamming_distance(tree, 0b1111, 1) == set([0b1110, 0b1011])
+    assert find_all_hamming_distance(tree, 0b1111, 2) == set([0b1110, 0b1011])
+    assert find_all_hamming_distance(tree, 0b1111, 3) == set([0b1110, 0b1011, 0b0010, 0b0001])
+    assert find_all_hamming_distance(tree, 0b1111, 4) == all_values - set([0b1111])
 
-    assert tree.find_all_hamming_distance(0b1011, 0) == set()
-    assert tree.find_all_hamming_distance(0b1011, 1) == set([0b1111])
-    assert tree.find_all_hamming_distance(0b1011, 2) == set([0b1111, 0b1110, 0b0010, 0b0001])
-    assert tree.find_all_hamming_distance(0b1011, 3) == all_values - set([0b1011])
-    assert tree.find_all_hamming_distance(0b1011, 4) == all_values - set([0b1011])
+    assert find_all_hamming_distance(tree, 0b1011, 0) == set()
+    assert find_all_hamming_distance(tree, 0b1011, 1) == set([0b1111])
+    assert find_all_hamming_distance(tree, 0b1011, 2) == set([0b1111, 0b1110, 0b0010, 0b0001])
+    assert find_all_hamming_distance(tree, 0b1011, 3) == all_values - set([0b1011])
+    assert find_all_hamming_distance(tree, 0b1011, 4) == all_values - set([0b1011])
 
 # Test on random hashes
 def test_find_hamming_distance():
@@ -102,5 +105,5 @@ def test_find_hamming_distance():
         find = n[0]
         test = n[1]
         for distance in range(0, len(test)):
-            assert tree.find_all_hamming_distance(find, distance) == set(test[:distance])
+            assert find_all_hamming_distance(tree, find, distance) == set(test[:distance])
     

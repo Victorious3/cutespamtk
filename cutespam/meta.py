@@ -142,6 +142,13 @@ class Meta:
         meta.read()
         return cls.from_meta(meta)
 
+    def as_dict(self):
+        res = {}
+        for k in self.tag_names():
+            res[k] = getattr(self, k)
+        return res
+
+
 class Rating(Enum):
     Safe = "s"
     Nudity = "n"
