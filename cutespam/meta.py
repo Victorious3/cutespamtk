@@ -9,6 +9,7 @@ from pathlib import Path
 from enum import Enum
 
 from cutespam import JSONEncoder
+from cutespam.xmpmeta import Rating
 
 class Tag:
     def __init__(self, tag_name: str):
@@ -147,13 +148,6 @@ class Meta:
         for k in self.tag_names():
             res[k] = getattr(self, k)
         return res
-
-
-class Rating(Enum):
-    Safe = "s"
-    Nudity = "n"
-    Questionable = "q"
-    Explicit = "e"
 
 class CuteMeta(Meta):
     uid: UUID          = Tag("Iptc.Envelope.UNO")                  # unique id for an image file

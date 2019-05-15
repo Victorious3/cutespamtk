@@ -88,7 +88,9 @@ class Meta(metaclass = _Meta):
             tag = getattr(type(self), k, None)
             if not tag and ignore_missing_keys:
                 continue
-            v = tag.type(v)
+
+            if v and not isinstance(tag, property) and not isinstance(v, tag.type):
+                v = tag.type(v)
             setattr(self, k, v)
 
     def as_dict(self):
@@ -132,6 +134,7 @@ class Meta(metaclass = _Meta):
 
     def write(self):
         def serialize(value, tpe):
+            if value is None: return None
             if issubclass(tpe, Enum):
                 return value.value
             elif tpe is datetime:
@@ -152,7 +155,8 @@ class Meta(metaclass = _Meta):
             if elem:
                 # delete existing value
                 elem.getparent().remove(elem)
-                
+
+            if value is None: continue
             if tag.tag_type:
                 # complex value
                 propety = ET.Element(tag.tag_name)
@@ -180,9 +184,6 @@ class Meta(metaclass = _Meta):
     def clear(self):
         for k, _ in self.properties():
             setattr(self, k, None)
-            
-    def release(self):
-        NotImplemented # Probably not needed anymore
 
     @property
     def filename(self):
@@ -230,11 +231,12 @@ class CuteMeta(Meta):
 
     @property
     def author(self):
-        return self.authors[0]
+        return self.authors[0] if self.authors else None
 
     @author.setter
     def author(self, value):
-        self.authors = [value]
+        if value is None: self.authors = None
+        else: self.authors = [value]
 
     def __init__(self, filename = None, uid = None):
         self._db_uid = uid
