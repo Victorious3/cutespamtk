@@ -22,8 +22,8 @@ class Tag:
 class _Meta(type):
     def __init__(cls: "Meta", name, bases, nmspc):
         if cls._XMP:
-            with open(cls._XMP, "r") as file:
-                cls._XMP_ETREE = root = ET.fromstring(file.read())
+            parser = ET.XMLParser(remove_blank_text = True)
+            cls._XMP_ETREE = root = ET.parse(str(cls._XMP.resolve()), parser).getroot()
 
             for k, tpe in typing.get_type_hints(cls).items():
                 if not k.startswith("_"):

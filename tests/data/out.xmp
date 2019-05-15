@@ -1,6 +1,41 @@
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
-    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-        <rdf:Description xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cute="http://ns.nightfall.moe/cutespam/1.0/" rdf:about="" dc:identifier="04a10461-a60b-4dc3-8d91-4a91b311f004" cute:hash="b59f95ffc2e2f440ff006fb01a95c547ee163ee045c0c030ba3b570f4ecc28b5" dc:source="http://example.com/example_image.jpg" cute:group_id="04a10461-a60b-4dc3-8d91-4a91b311f004" cute:rating="q" xmp:CreateDate="2017-05-29T00:00:59.412000Z" xmp:MetadataDate="2017-05-29T00:00:59.412000Z">
-            <dc:description><rdf:Alt><rdf:li xml:lang="x-default">Test Caption</rdf:li></rdf:Alt></dc:description><dc:creator><rdf:Seq><rdf:li>test_author</rdf:li></rdf:Seq></dc:creator><dc:subject><rdf:Bag><rdf:li>test_keyword_2</rdf:li><rdf:li>test_keyword</rdf:li></rdf:Bag></dc:subject><cute:collections><rdf:Bag><rdf:li>test_collection3</rdf:li><rdf:li>test_collection</rdf:li><rdf:li>test_collection2</rdf:li></rdf:Bag></cute:collections><cute:src><rdf:Bag><rdf:li>http://example.com</rdf:li><rdf:li>http://example.de</rdf:li></rdf:Bag></cute:src><cute:via><rdf:Bag><rdf:li>http://example.com</rdf:li><rdf:li>http://example.de</rdf:li></rdf:Bag></cute:via></rdf:Description>
-    </rdf:RDF>
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cute="http://ns.nightfall.moe/cutespam/1.0/" rdf:about="" dc:identifier="04a10461-a60b-4dc3-8d91-4a91b311f004" cute:hash="b59f95ffc2e2f440ff006fb01a95c547ee163ee045c0c030ba3b570f4ecc28b5" dc:source="http://example.com/example_image.jpg" cute:group_id="04a10461-a60b-4dc3-8d91-4a91b311f004" cute:rating="q" xmp:CreateDate="2017-05-29T00:00:59.412000Z" xmp:MetadataDate="2017-05-29T00:00:59.412000Z">
+      <dc:description>
+        <rdf:Alt>
+          <rdf:li xml:lang="x-default">Test Caption</rdf:li>
+        </rdf:Alt>
+      </dc:description>
+      <dc:creator>
+        <rdf:Seq>
+          <rdf:li>test_author</rdf:li>
+        </rdf:Seq>
+      </dc:creator>
+      <dc:subject>
+        <rdf:Bag>
+          <rdf:li>test_keyword</rdf:li>
+          <rdf:li>test_keyword_2</rdf:li>
+        </rdf:Bag>
+      </dc:subject>
+      <cute:collections>
+        <rdf:Bag>
+          <rdf:li>test_collection</rdf:li>
+          <rdf:li>test_collection3</rdf:li>
+          <rdf:li>test_collection2</rdf:li>
+        </rdf:Bag>
+      </cute:collections>
+      <cute:src>
+        <rdf:Bag>
+          <rdf:li>http://example.de</rdf:li>
+          <rdf:li>http://example.com</rdf:li>
+        </rdf:Bag>
+      </cute:src>
+      <cute:via>
+        <rdf:Bag>
+          <rdf:li>http://example.de</rdf:li>
+          <rdf:li>http://example.com</rdf:li>
+        </rdf:Bag>
+      </cute:via>
+    </rdf:Description>
+  </rdf:RDF>
 </x:xmpmeta>
