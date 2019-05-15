@@ -108,8 +108,10 @@ def main(ARGS):
         meta.write()
         if not new_name.exists():
             os.rename(best_file.resolve(), new_name.resolve())
+            os.rename(best_file.resolve().with_suffix(".xmp"), new_name.resolve().with_suffix(".xmp"))
         for f in to_delete:
             os.remove(f.resolve())
+            os.remove(f.resolve().with_suffix(".xmp"))
 
 def args(parser):
     parser.add_argument("folders", nargs = "*")

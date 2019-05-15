@@ -10,9 +10,9 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from datetime import datetime
 
-from cutespam.meta import CuteMeta, Rating
+from cutespam.xmpmeta import CuteMeta, Rating
 from cutespam.hash import hash_img
-from cutespam.db import find_similar_images_hash, filename_for_uid
+from cutespam.db import find_similar_images_hash, picture_file_for_uid
 from cutespam.providers import Provider
 from cutespam.iqdb import iqdb, upscale
 from cutespam.config import config
@@ -118,7 +118,7 @@ def download_or_show_similar(data: dict, threshold = 0.9) -> List[SimilarImage]:
     h = hash_img(file)
     similar = find_similar_images_hash(h, threshold)
     if similar:
-        return [SimilarImage(s[0], s[1], filename_for_uid(s[1]).name) for s in similar]
+        return [SimilarImage(s[0], s[1], picture_file_for_uid(s[1]).name) for s in similar]
     return download(data)
 
 def read_meta_from_dict(meta, data):
@@ -146,19 +146,22 @@ def read_meta_from_dict(meta, data):
 
 @apifun
 def download(data: dict):
-    file = get_cached_file(data["img"])
-    meta: CuteMeta = CuteMeta.from_file(file)
+    imagef = get_cached_file(data["img"])
+    metaf = imagef.with_suffix(".xmp")
+
+    meta: CuteMeta = CuteMeta(filename = metaf)
+    meta.last_updated = datetime.utcnow()
     meta.source = data["img"]
-    meta.hash = hash_img(file)
+    meta.hash = hash_img(imagef)
     meta.date = datetime.utcnow()
 
     read_meta_from_dict(meta, data)
     
     meta.generate_keywords()
     meta.write()
-    meta.release() # Windows hack
-    shutil.move(str(file), str(config.image_folder / (str(meta.uid) + file.suffix)))
 
+    shutil.move(str(imagef), str(config.image_folder / (str(meta.uid) + imagef.suffix)))
+    shutil.move(str(metaf), str(config.image_folder / (str(meta.uid) + ".xmp")))
     
 @apifun
 def get_config():

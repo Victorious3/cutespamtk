@@ -12,23 +12,24 @@ def main(ARGS):
 
     from cutespam import yn_choice
     from cutespam.api import read_meta_from_dict
-    from cutespam.hash import hash_meta
     from cutespam.iqdb import iqdb, upscale
-    from cutespam.meta import CuteMeta
+    from cutespam.hash import hash_img
+    from cutespam.xmpmeta import CuteMeta
     from cutespam.config import config
-    from cutespam.db import find_similar_images_hash, filename_for_uid
+    from cutespam.db import find_similar_images_hash, picture_file_for_uid
     
     file = Path(ARGS.file)
+    xmpfile = file.with_suffix(".xmp")
 
-    meta = CuteMeta.from_file(file)
-    hash_meta(meta)
+    meta = CuteMeta(filename = xmpfile)
+    meta.hash = hash_img(file)
 
     similar = find_similar_images_hash(meta.hash, 0.9)
     if similar:
         print()
         print("Found potential duplicates:")
         for s in similar:
-            print(f"{s[0]:.1%}: {filename_for_uid(s[1]).resolve().as_uri() if ARGS.uri else s[1]}")
+            print(f"{s[0]:.1%}: {picture_file_for_uid(s[1]).resolve().as_uri() if ARGS.uri else s[1]}")
         if not ARGS.add_duplicate and (ARGS.skip_duplicate or not yn_choice("Proceed?")): return
 
     with Image.open(file) as imgf:
@@ -58,12 +59,13 @@ def main(ARGS):
     print("Metadata:")
     print(meta)
 
+    meta.last_updated = datetime.utcnow()
     meta.write()
-    meta.release()
 
     print("Done")
     f = shutil.move if ARGS.move else shutil.copy
     f(str(file), str(config.image_folder / (str(meta.uid) + file.suffix)))
+    f(str(xmpfile), str(config.image_folder / (str(meta.uid) + ".xmp")))
     
 
 def args(parser):

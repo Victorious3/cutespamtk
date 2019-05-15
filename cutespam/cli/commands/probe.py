@@ -10,7 +10,7 @@ def main(ARGS):
     from pathlib import Path
 
     from cutespam import db
-    from cutespam.meta import CuteMeta
+    from cutespam.xmpmeta import CuteMeta
 
     if ARGS.file and ARGS.file[0] == "-" and not sys.stdin.isatty():
         ARGS.file = sys.stdin.read().splitlines()
@@ -18,7 +18,7 @@ def main(ARGS):
     for file in ARGS.file:
         fp = Path(file)
         if fp.exists() and fp.is_file():
-            cute_meta = CuteMeta.from_file(file)
+            cute_meta = CuteMeta.from_file(file.with_suffix(".xmp"))
         else:
             try: 
                 uid = UUID(file)

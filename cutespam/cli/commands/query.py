@@ -1,10 +1,10 @@
 import argparse
-from cutespam.meta import CuteMeta # This is needed for below
+from cutespam.xmpmeta import CuteMeta # This is needed for below
 
 DESCRIPTION = "Queries uids for tags or properties"
 
 def main(ARGS):
-    from cutespam.db import query, filename_for_uid
+    from cutespam.db import query, picture_file_for_uid
 
     filtered = query(
         keyword = ARGS.keyword, 
@@ -20,7 +20,7 @@ def main(ARGS):
         print(len(filtered))
     else:
         for uid in filtered:
-            print(filename_for_uid(uid).absolute().as_uri() if ARGS.uri else uid)
+            print(picture_file_for_uid(uid).absolute().as_uri() if ARGS.uri else uid)
 
 def args(parser):
     parser.add_argument("--uri", action = "store_true",

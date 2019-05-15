@@ -15,7 +15,7 @@ from functools import wraps
 from cutespam import log
 from cutespam.hashtree import HashTree
 from cutespam.config import config
-from cutespam.meta import CuteMeta, Rating
+from cutespam.xmpmeta import CuteMeta, Rating
 
 import Pyro4
 Pyro4.config.SERIALIZER = "pickle"
@@ -127,10 +127,10 @@ def init_db():
 
         log.info("Loading folder %r into database", str(config.image_folder))
 
-        for image in config.image_folder.glob("*.*"):
-            if not image.is_file(): continue
-            if image.name.startswith("."): continue
-            _load_file(image, __db)
+        for xmpf in config.image_folder.glob("*.xmp"):
+            if not xmpf.is_file(): continue
+            if xmpf.name.startswith("."): continue
+            _load_file(xmpf, __db)
 
         __db.commit()
         with open(config.hashdbf, "wb") as hashdbfp, __hashes_lock:
@@ -144,24 +144,25 @@ def init_db():
 
     log.info("Catching up with image folder")
     uuids_in_folder = set()
-    for image in config.image_folder.glob("*.*"):
-        if not image.is_file(): continue
-        if image.name.startswith("."): continue
+    for xmpf in config.image_folder.glob("*.xmp"):
+        if not xmpf.is_file(): continue
+        if xmpf.name.startswith("."): continue
+
         try:
-            uuid = UUID(image.stem)
+            uuid = UUID(xmpf.stem)
             uuids_in_folder.add(uuid)
 
         except: continue
     uuids_in_database = set(d[0] for d in __db.execute("select uid from Metadata").fetchall())
 
     for uid in uuids_in_folder - uuids_in_database: # recently added
-        _load_file(filename_for_uid(uid), __db)
+        _load_file(xmp_file_for_uid(uid), __db)
     for uid in uuids_in_database - uuids_in_folder: # recently deleted
         _remove_image(uid, __db)
 
     for uid in uuids_in_database:
         try:
-            _save_file(filename_for_uid(uid), __db)
+            _save_file(xmp_file_for_uid(uid), __db)
         except FileNotFoundError: pass # was deleted earlier
 
     __db.commit()
@@ -199,11 +200,9 @@ def listen_for_file_changes():
                 log.info("%s %r %r", type(event), getattr(event, "src_path", None), getattr(event, "dest_path", None))
 
         @staticmethod
-        def is_image(file: Path, is_file = True):
+        def is_xmp_file(file: Path, is_file = True):
             if is_file and not file.is_file(): return False
-            # This is only here because mad lad exiv2 creates temporary files without giving them any
-            # other sort of indicator. Did they have to be in the same folder? No. Did exiv2 care? NO.
-            if file.suffix not in config.extensions: return False
+            if file.suffix != ".xmp": return False
             if file.name.startswith("."): return False
             try:
                 UUID(file.stem)
@@ -215,25 +214,25 @@ def listen_for_file_changes():
             self.on_created(FileCreatedEvent(event.dest_path))
 
         def on_created(self, event):
-            image = Path(event.src_path)
-            if not self.is_image(image): return
+            file = Path(event.src_path)
+            if not self.is_xmp_file(file): return
 
-            load_file(image, db = self.db)
+            load_file(file, db = self.db)
         
         def on_deleted(self, event):
-            image = Path(event.src_path)
-            if not self.is_image(image, is_file = False): return
+            file = Path(event.src_path)
+            if not self.is_xmp_file(file, is_file = False): return
 
             try:
-                uid = UUID(image.stem)
+                uid = UUID(file.stem)
             except: return
             remove_image(uid, db = self.db)
 
         def on_modified(self, event):
-            image = Path(event.src_path)
-            if not self.is_image(image): return
+            file = Path(event.src_path)
+            if not self.is_xmp_file(file): return
 
-            save_file(image, db = self.db)
+            save_file(file, db = self.db)
 
     file_observer = Observer()
     file_observer.schedule(EventHandler(), str(config.image_folder.resolve()))
@@ -255,11 +254,12 @@ def listen_for_db_changes():
 
             for data in modified:
                 with __folder_lock:
-                    filename = filename_for_uid(data["uid"])
-                    f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(filename))
+                    filename = xmp_file_for_uid(data["uid"])
+                    meta = CuteMeta.from_file(filename)
+
+                    f_last_updated = meta.last_updated
                     db_last_updated = data["last_updated"]
                     if db_last_updated > f_last_updated:
-                        meta = CuteMeta.from_file(filename)
                         log.info("Writing to file %r", str(filename))
                         print("file:", f_last_updated, "database:", db_last_updated)
 
@@ -275,16 +275,22 @@ def listen_for_db_changes():
 
                         meta.keywords = set(k[0] for k in keywords)
                         meta.collections = set(c[0] for c in collections)
+                        meta.last_updated = db_last_updated # Make sure that the entry in the database stays the same as the file
                         meta.write()
-
-                        # Make sure that the entry in the database stays the same as the file
-                        epoch = floor(time.mktime(db_last_updated.timetuple()) + 1) # precision problem on windows
-                        os.utime(str(filename), (epoch, epoch))
 
     except KeyboardInterrupt:
         pass
+
+def xmp_file_for_uid(uid) -> Path:
+    if isinstance(uid, str):
+        uid = UUID(str)
+    
+    filename = (config.image_folder / str(uid)).with_suffix(".xmp")
+    if filename.exists(): return filename
+
+    raise FileNotFoundError("No file for uuid %s found", uid)
                 
-def filename_for_uid(uid) -> Path:
+def picture_file_for_uid(uid) -> Path:
     if isinstance(uid, str):
         uid = UUID(str)
 
@@ -347,7 +353,7 @@ def get_all_uids(db: sqlite3.Connection = None):
 
 @dbfun
 def get_meta(uid: UUID, db: sqlite3.Connection = None):
-    meta = CuteMeta(uid = uid, filename = filename_for_uid(uid))
+    meta = CuteMeta(uid = uid, filename = xmp_file_for_uid(uid))
     uidstr = str(uid.hex)
     res = db.execute("select * from Metadata where uid is ?", (uidstr,)).fetchone()
     for name, v in zip(res.keys(), res):
@@ -389,19 +395,18 @@ def save_file(fp: Path, db: sqlite3.Connection = None):
     _save_file(fp, db)
     db.commit()
 
-def _save_file(image: Path, db: sqlite3.Connection):
+def _save_file(xmpf: Path, db: sqlite3.Connection):
     with __folder_lock:
-        f_last_updated = datetime.utcfromtimestamp(os.path.getmtime(str(image)))
-        uid = UUID(image.stem)
+        meta = CuteMeta.from_file(xmpf)
+        f_last_updated = meta.last_updated
+        uid = UUID(xmpf.stem)
         db_last_updated = db.execute("""
             select last_updated from Metadata where uid is ?
         """, (uid,)).fetchone()[0]
         
         if f_last_updated > db_last_updated:
-            log.info("Reading from file %r", str(image))
+            log.info("Reading from file %r", str(xmpf))
             print("file:", f_last_updated, "database:", db_last_updated)
-            
-            meta = CuteMeta.from_file(image)
             _save_meta(meta, f_last_updated, db)
             db.commit()
 
@@ -410,7 +415,7 @@ def save_meta(meta: CuteMeta, db: sqlite3.Connection = None):
     _save_meta(meta, datetime.utcnow(), db)
     db.commit()
 
-def _save_meta(meta: CuteMeta, timestamp, db: sqlite3.Connection):
+def _save_meta(meta: CuteMeta, timestamp: datetime, db: sqlite3.Connection):
 
     # Sync data
     if meta.generate_keywords():
@@ -465,17 +470,18 @@ def _save_meta(meta: CuteMeta, timestamp, db: sqlite3.Connection):
     ))
 
 @dbfun
-def load_file(image, db: sqlite3.Connection):
-    _load_file(image, db)
+def load_file(xmpf, db: sqlite3.Connection):
+    _load_file(xmpf, db)
     db.commit()
 
-def _load_file(image: Path, db: sqlite3.Connection):
-    timestamp = datetime.utcfromtimestamp(os.path.getmtime(str(image)))
-    meta: CuteMeta = CuteMeta.from_file(image)
+def _load_file(xmpf: Path, db: sqlite3.Connection):
+    meta: CuteMeta = CuteMeta.from_file(xmpf)
+    timestamp = meta.last_updated
+
     if not meta.uid: return
     if not meta.hash: return
 
-    log.info("Loading %r", str(image))
+    log.info("Loading %r", str(xmpf))
 
     # Sync data
     if meta.generate_keywords():
@@ -485,7 +491,7 @@ def _load_file(image: Path, db: sqlite3.Connection):
     try:
         with get_hashes() as hashes: 
             hashes.add(meta.hash)
-    except KeyError: log.warn("Possible duplicate %r", str(image))
+    except KeyError: log.warn("Possible duplicate %r", str(xmpf))
 
     db.execute(f"""
         INSERT INTO Metadata (

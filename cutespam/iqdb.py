@@ -10,7 +10,6 @@ from enum import Enum
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
 from typing import Tuple
-from cutespam import CuteMeta
 from pathlib import Path
 
 from cutespam.providers import Provider

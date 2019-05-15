@@ -56,7 +56,7 @@ def main(ARGS):
 
     from cutespam import make_request
     from cutespam.config import config
-    from cutespam.meta import CuteMeta
+    from cutespam.xmpmeta import CuteMeta
     from cutespam.hash import hash_img
     from cutespam.providers import Provider, Other, META_PROVIDERS, UUID_PROVIDERS # TODO This shouldn't need to happen here
 
@@ -303,11 +303,12 @@ def main(ARGS):
 
             os.rename(tmpfile, imgfile)
 
-            cute_meta = CuteMeta.from_file(imgfile)
+            xmpfile = imgfile.with_suffix(".xmp")
+            cute_meta = CuteMeta.from_file(xmpfile)
             cute_meta.clear() # Delete all unwanted tags
 
             log("Generating image hash for file", imgfile)
-            hash_img(cute_meta)
+            cute_meta.hash = hash_img(imgfile)
             log("Hashed", imgfile, "as", cute_meta.hash, "(phash, 16)")
 
             cute_meta.read_from_dict(meta, ignore_missing_keys = True)

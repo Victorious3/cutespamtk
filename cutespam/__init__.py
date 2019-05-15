@@ -28,7 +28,7 @@ if config.trace_debug:
     log.setLevel(logging.DEBUG)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
-from cutespam.meta import CuteMeta
+from cutespam.xmpmeta import CuteMeta
 
 def open_file(filename):
     if sys.platform == "win32":

@@ -5,14 +5,14 @@ DESCRIPTION = "Finds similar images indicated by a threshold"
 def main(ARGS):
     from uuid import UUID
 
-    from cutespam.db import find_similar_images, filename_for_uid
+    from cutespam.db import find_similar_images, picture_file_for_uid
 
     uuid = UUID(ARGS.uuid)
     result = find_similar_images(uuid, ARGS.threshold / 100, ARGS.limit)
     for r in result:
         uid = r[1]
         if ARGS.uri:
-            uid = filename_for_uid(uid).absolute().as_uri()
+            uid = picture_file_for_uid(uid).absolute().as_uri()
         print(f"{r[0]:.1%}: {uid}")
 
 def args(parser):

@@ -1,7 +1,7 @@
 import argparse, codecs
 
 from cutespam.cli import UUIDFileCompleter
-from cutespam.meta import CuteMeta
+from cutespam.xmpmeta import CuteMeta
 
 DESCRIPTION = "Modify a file's tag values"
 
@@ -21,7 +21,7 @@ def main(ARGS):
 
         fp = Path(file)
         if fp.exists() and fp.is_file():
-            cute_meta = CuteMeta.from_file(fp)
+            cute_meta = CuteMeta.from_file(fp.with_suffix(".xmp"))
         else:
             try: uid = UUID(file)
             except: raise argparse.ArgumentTypeError("Not a valid file or uuid")

@@ -8,8 +8,8 @@ def main(ARGS):
 
     from PIL import Image
 
-    from cutespam.meta import CuteMeta
-    from cutespam.db import find_all_duplicates, filename_for_uid
+    from cutespam.xmpmeta import CuteMeta
+    from cutespam.db import find_all_duplicates, picture_file_for_uid
 
     def html_output(duplicates):
         t_html = """
@@ -55,7 +55,7 @@ def main(ARGS):
             tags = ""
 
             for uid in duplicate:
-                d = filename_for_uid(uid)
+                d = picture_file_for_uid(uid)
                 fsize = os.path.getsize(d.resolve()) / 1_000_000
                 with Image.open(d) as img_data:
                     width, height = img_data.size

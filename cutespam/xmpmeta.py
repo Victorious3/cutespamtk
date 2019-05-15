@@ -56,9 +56,9 @@ class Meta(metaclass = _Meta):
             setattr(self, k, None)
 
     def properties(self):
-        for k, v in vars(self).items():
-            if k in vars(type(self)):
-                yield (k, v)
+        for k in self.tag_names():
+            v = getattr(self, k)
+            yield (k, v)
 
     def to_string(self, fields = None):
         if fields and len(fields) == 1:
@@ -94,10 +94,7 @@ class Meta(metaclass = _Meta):
             setattr(self, k, v)
 
     def as_dict(self):
-        res = {}
-        for k in self.tag_names():
-            res[k] = getattr(self, k)
-        return res
+        return dict(self.properties())
 
     def read(self):
         def deserialize(value, tpe):
@@ -107,9 +104,9 @@ class Meta(metaclass = _Meta):
 
         with open(self.filename, "r") as file:
             self._XMP_ETREE = root = ET.fromstring(file.read())
-
-        value = None
+            
         for k in self.tag_names():
+            value = None
             tag = getattr(type(self), k)
 
             if tag.tag_type:
@@ -145,9 +142,7 @@ class Meta(metaclass = _Meta):
             self._XMP_ETREE = deepcopy(type(self)._XMP_ETREE)
 
         root = self._XMP_ETREE
-        for k in self.tag_names():
-            value = getattr(self, k)
-
+        for k, value in self.properties():
             tag = getattr(type(self), k)
             elem = root.find(f".//{tag.tag_name}")
             description = root.find(".//{%s}Description" % RDF_NS)
