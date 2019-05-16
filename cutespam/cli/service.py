@@ -2,7 +2,7 @@
 import Pyro4, signal
 import argparse
 
-from cutespam import db
+from cutespam import db, log
 from cutespam.config import config
 from cutespam.hashtree import HashTree
 
@@ -16,7 +16,7 @@ for name, f in db._functions.items():
     def wrapper(f, name):
         def function(self, *args, **kwargs):
             kwargs.pop("db", None)
-            print("Calling", name)
+            log.debug("Calling %s", name)
             return f(*args, db = self.db, **kwargs)
         return function
     setattr(DBService, name, wrapper(f, name))
@@ -45,8 +45,8 @@ def main():
     deamon = Pyro4.Daemon(host = "localhost", port = config.service_port)
     uri = deamon.register(DBService, objectId = "cutespam-db")
 
-    print("Listening on port", config.service_port)
-    print("uri:", uri)
+    log.info("Listening on port %s", config.service_port)
+    log.info("uri: %s", uri)
 
     deamon.requestLoop()
 

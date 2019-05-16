@@ -197,7 +197,7 @@ def listen_for_file_changes():
 
         def on_any_event(self, event):
             if config.trace_debug:
-                log.info("%s %r %r", type(event), getattr(event, "src_path", None), getattr(event, "dest_path", None))
+                log.debug("%s %r %r", type(event), getattr(event, "src_path", None), getattr(event, "dest_path", None))
 
         @staticmethod
         def is_xmp_file(file: Path, is_file = True):
