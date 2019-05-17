@@ -1,7 +1,6 @@
 import urllib, time, json, os, sys, subprocess
 import logging
 
-from cutespam import log
 from functools import reduce
 from pathlib import Path
 from enum import Enum

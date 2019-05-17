@@ -15,8 +15,9 @@ def iqdb(ARGS):
             print("Fetching IQDB for url", ARGS.file, "...")
             results = _iqdb(url = ARGS.file, saucenao = ARGS.saucenao)
         else:
-            cute_meta = CuteMeta.from_file(Path(ARGS.file))
-            if cute_meta.source:
+            xmpf = Path(ARGS.file).with_suffix(".xmp")
+            if xmpf.exists():
+                cute_meta = CuteMeta.from_file(xmpf)
                 print("Fetching IQDB for url", cute_meta.source, "...")
                 results = _iqdb(url = cute_meta.source, saucenao = ARGS.saucenao)
             else:
