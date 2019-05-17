@@ -58,7 +58,7 @@ def dbfun(fun):
                 __rpccon = Pyro4.Proxy(f"PYRO:cutespam-db@localhost:{config.service_port}")
                 assert __rpccon.ping() == "pong"
             except Exception as e:
-                print(str(e)) 
+                log.error(str(e)) 
                 __rpccon = False
                 log.warn("No database service running, please consider starting it by running cutespam-db in a separate process or setting it up as a service with your system.")
                 log.warn("Loading the database takes a long time but it makes the requests a lot faster.")
@@ -134,8 +134,8 @@ def init_db():
 
         __db.commit()
         with open(config.hashdbf, "wb") as hashdbfp, __hashes_lock:
-            log.info("Writing to file...")
-            __hashes.write_to_file(config.hashdbf)
+            log.info("Writing hashes to file...")
+            __hashes.write_to_file(hashdbfp)
 
     else:
         with open(config.hashdbf, "rb") as hashdbfp, __hashes_lock:
@@ -170,8 +170,15 @@ def init_db():
 
     log.info("Done!")
     def exit():
+        log.info("Closing database connection")
         __db.commit()
         __db.close()
+
+        with open(config.hashdbf, "wb") as hashdbfp, __hashes_lock:
+            log.info("Writing hashes to file...")
+            __hashes.write_to_file(hashdbfp)
+        
+        log.info("Done!")
 
     atexit.register(exit)
 
@@ -261,7 +268,7 @@ def listen_for_db_changes():
                     db_last_updated = data["last_updated"]
                     if db_last_updated > f_last_updated:
                         log.info("Writing to file %r", str(filename))
-                        print("file:", f_last_updated, "database:", db_last_updated)
+                        log.debug("file: %s database: %s", f_last_updated, db_last_updated)
 
                         for name, v in zip(data.keys(), data):
                             setattr(meta, name, v)
@@ -406,7 +413,7 @@ def _save_file(xmpf: Path, db: sqlite3.Connection):
         
         if f_last_updated > db_last_updated:
             log.info("Reading from file %r", str(xmpf))
-            print("file:", f_last_updated, "database:", db_last_updated)
+            log.debug("file: %s database: %s", f_last_updated, db_last_updated)
             _save_meta(meta, f_last_updated, db)
             db.commit()
 

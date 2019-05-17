@@ -21,7 +21,8 @@ class Config(BaseConfig):
 
     image_folder: Path = "~/Pictures/Cutespam"
     cache_folder: Path = None
-
+    log_folder: Path = None
+    
     extensions: Tuple[str] = ("jpg", "png", "jpeg")
     tag_regex: str = r"[!-)+-9;-~]+"
 
@@ -66,11 +67,15 @@ def _read_config():
     # Sanitize values
     if not config.cache_folder:
         config.cache_folder = appdirs.user_cache_dir(NAME, ORG)
+    if not config.log_folder:
+        config.log_folder = appdirs.user_log_dir(NAME, ORG)
 
     config.image_folder = Path(config.image_folder).expanduser()
     config.image_folder.mkdir(parents = True, exist_ok = True)
     config.cache_folder = Path(config.cache_folder).expanduser()
     config.cache_folder.mkdir(parents = True, exist_ok = True)
+    config.log_folder = Path(config.log_folder).expanduser()
+    config.log_folder.mkdir(parents = True, exist_ok = True)
 
     config.metadbf = config.cache_folder / "metadata.db"
     config.hashdbf = config.cache_folder / "hashes.db"

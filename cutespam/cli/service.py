@@ -1,8 +1,10 @@
 
 import Pyro4, signal
 import argparse
+import logging
+import logging.handlers
 
-from cutespam import db, log
+from cutespam import db, log, log_formatter
 from cutespam.config import config
 from cutespam.hashtree import HashTree
 
@@ -27,20 +29,25 @@ def main():
     parser.add_argument("-t", "--trace", action = "store_true")
     ARGS = parser.parse_args()
 
+    # Write to service.log
+    fh = logging.handlers.RotatingFileHandler(config.log_folder / "service.log", maxBytes = 10**7, backupCount = 20)
+    fh.setFormatter(log_formatter)
+    log.addHandler(fh)
+
     if ARGS.trace:
         config.trace_debug = True
 
+    if config.trace_debug:
+        log.info("trace_debug enabled")
+        log.setLevel(logging.DEBUG)
+
+    log.info("Starting service")
     db.init_db()
     db.start_listeners() 
 
     Pyro4.config.COMMTIMEOUT = 0.5
     Pyro4.config.REQUIRE_EXPOSE = False
     Pyro4.config.SERIALIZERS_ACCEPTED = set(["pickle"])
-
-    # Make sure we are running a single thread to share the database connection
-    # TODO This should be changed in the future, multiple threads already use their own db.
-    # Pass db as first parameter to every method?
-    #Pyro4.config.SERVERTYPE = "multiplex" 
 
     deamon = Pyro4.Daemon(host = "localhost", port = config.service_port)
     uri = deamon.register(DBService, objectId = "cutespam-db")

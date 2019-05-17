@@ -6,7 +6,7 @@ from pathlib import Path
 
 from cutespam.iqdb import iqdb as _iqdb
 from cutespam.iqdb import IQDBException
-from cutespam.meta import CuteMeta
+from cutespam.xmpmeta import CuteMeta
 
 def iqdb(ARGS):
     start = time.time()

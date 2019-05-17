@@ -8,6 +8,7 @@ import re
 from bs4 import BeautifulSoup
 from xml.dom import minidom
 
+from cutespam import log
 from cutespam import make_request, decode_all
 from cutespam.config import config
 
@@ -37,7 +38,7 @@ class Provider:
         except ssl.CertificateError:
             self.status = 495
         except Exception as e:
-            print("An exception occured while fetching url %s: %s" % (self.url, str(e)))
+            log.error("An exception occured while fetching url %s: %s", self.url, str(e))
             self.status = 400
 
         if type(self) == Other: self.status == 200

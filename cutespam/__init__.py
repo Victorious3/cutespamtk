@@ -1,6 +1,7 @@
 import urllib, time, json, os, sys, subprocess
 import logging
 
+from cutespam import log
 from functools import reduce
 from pathlib import Path
 from enum import Enum
@@ -24,9 +25,14 @@ class JSONEncoder(json.JSONEncoder):
 from cutespam.config import config
 
 log = logging.Logger("db", level = logging.INFO)
+log_formatter = logging.Formatter("%(asctime)s [%(module)s][%(levelname)s]: %(message)s")
+
 if config.trace_debug: 
     log.setLevel(logging.DEBUG)
-log.addHandler(logging.StreamHandler(sys.stdout))
+
+sh = logging.StreamHandler(sys.stdout)
+sh.setFormatter(log_formatter)
+log.addHandler(sh)
 
 from cutespam.xmpmeta import CuteMeta
 
@@ -70,7 +76,7 @@ def make_request(url, method, ratelimit_retry = False):
                 seconds = 120
 
             if ratelimit_retry:
-                print("Rate limit exceeded on", url, ", will retry after", seconds, "seconds")
+                log.error("Rate limit exceeded on %s, will retry after %s seconds", url, seconds)
                 time.sleep(seconds)
                 return make_request(request, url)
             else:
