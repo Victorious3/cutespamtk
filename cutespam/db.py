@@ -354,6 +354,11 @@ def get_tab_complete_uids(uidstr: str, db: sqlite3.Connection = None):
     return set(uid[0] for uid in uids)
 
 @dbfun
+def get_random_uid(db: sqlite3.Connection = None):
+    uid = db.execute("select uid from Metadata order by random() limit 1").fetchone()[0]
+    return uid
+
+@dbfun
 def get_all_uids(db: sqlite3.Connection = None):
     uids = db.execute("select uid from Metadata").fetchall()
     return set(uid[0] for uid in uids)
