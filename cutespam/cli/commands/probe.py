@@ -18,7 +18,7 @@ def main(ARGS):
     for file in ARGS.file:
         fp = Path(file)
         if fp.exists() and fp.is_file():
-            cute_meta = CuteMeta.from_file(file.with_suffix(".xmp"))
+            cute_meta = CuteMeta.from_file(fp.with_suffix(".xmp"))
         else:
             try: 
                 uid = UUID(file)
