@@ -2,7 +2,7 @@ import pytest
 
 from cutespam.config import config
 from cutespam.hashtree import HashTree
-from cutespam.meta import CuteMeta
+from cutespam.xmpmeta import CuteMeta
 
 from pathlib import Path
 
@@ -23,7 +23,7 @@ def test_write_database(data_folder):
     else:
         # reading hashes from the image files in the specified location
         with open(HASH_FILE, "w") as hashesf:
-            for image in data_folder.glob("*.*"):
+            for image in data_folder.glob("*.xmp"):
                 meta = CuteMeta.from_file(image)
                 try: tree.add(meta.hash)
                 except KeyError: continue

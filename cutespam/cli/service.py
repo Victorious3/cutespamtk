@@ -66,6 +66,7 @@ def main():
         if not __closing:
             log.warn("Keyboard interrupt, exiting")
             deamon.close()
+            # TODO close the other threads as well or else they'll keep running until atexit finished
         else: log.warn("Please be patient, service is currently shutting down")
         __closing = True
     signal.signal(signal.SIGINT, interrupt)
