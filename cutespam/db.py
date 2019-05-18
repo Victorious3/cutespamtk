@@ -250,43 +250,39 @@ def listen_for_db_changes():
     last_updated = datetime.utcfromtimestamp(os.path.getmtime(config.metadbf.resolve()))
     # We need our own connection since this is on a different thread
     db = connect_db()
-    try:
-        while True:
-            time.sleep(10)
-            
-            modified = db.execute("""
-                select * from Metadata where last_updated > ?
-            """, (last_updated,)).fetchall()
-            last_updated = datetime.utcnow()
+    while True:
+        time.sleep(10)
+        
+        modified = db.execute("""
+            select * from Metadata where last_updated > ?
+        """, (last_updated,)).fetchall()
+        last_updated = datetime.utcnow()
 
-            for data in modified:
-                with __folder_lock:
-                    filename = xmp_file_for_uid(data["uid"])
-                    meta = CuteMeta.from_file(filename)
+        for data in modified:
+            with __folder_lock:
+                filename = xmp_file_for_uid(data["uid"])
+                meta = CuteMeta.from_file(filename)
 
-                    f_last_updated = meta.last_updated
-                    db_last_updated = data["last_updated"]
-                    if db_last_updated > f_last_updated:
-                        log.info("Writing to file %r", str(filename))
-                        log.debug("file: %s database: %s", f_last_updated, db_last_updated)
+                f_last_updated = meta.last_updated
+                db_last_updated = data["last_updated"]
+                if db_last_updated > f_last_updated:
+                    log.info("Writing to file %r", str(filename))
+                    log.debug("file: %s database: %s", f_last_updated, db_last_updated)
 
-                        for name, v in zip(data.keys(), data):
-                            setattr(meta, name, v)
+                    for name, v in zip(data.keys(), data):
+                        setattr(meta, name, v)
 
-                        keywords = db.execute("""
-                            select keyword from Metadata_Keywords where uid = ?
-                        """, (data["uid"],)).fetchmany()
-                        collections = db.execute("""
-                            select collection from Metadata_Collections where uid = ?
-                        """, (data["uid"],)).fetchmany()
+                    keywords = db.execute("""
+                        select keyword from Metadata_Keywords where uid = ?
+                    """, (data["uid"],)).fetchmany()
+                    collections = db.execute("""
+                        select collection from Metadata_Collections where uid = ?
+                    """, (data["uid"],)).fetchmany()
 
-                        meta.keywords = set(k[0] for k in keywords)
-                        meta.collections = set(c[0] for c in collections)
-                        meta.last_updated = db_last_updated # Make sure that the entry in the database stays the same as the file
-                        meta.write()
-
-    except KeyboardInterrupt:
-        pass
+                    meta.keywords = set(k[0] for k in keywords)
+                    meta.collections = set(c[0] for c in collections)
+                    meta.last_updated = db_last_updated # Make sure that the entry in the database stays the same as the file
+                    meta.write()
 
 def xmp_file_for_uid(uid) -> Path:
     if isinstance(uid, str):
@@ -348,8 +344,9 @@ def query(
 
 @dbfun
 def get_tab_complete_uids(uidstr: str, db: sqlite3.Connection = None):
-    uidstr = uidstr.replace("-", "")
     """ Returns a list of tab completions for a starting uid """
+
+    uidstr = uidstr.replace("-", "")
     uids = db.execute("select uid from Metadata where uid like ?", (uidstr + "%",)).fetchall()
     return set(uid[0] for uid in uids)
 

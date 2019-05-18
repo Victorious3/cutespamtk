@@ -1,5 +1,6 @@
 
 import Pyro4, signal
+import sys
 import argparse
 import logging
 import logging.handlers
@@ -25,35 +26,49 @@ for name, f in db._functions.items():
 
 
 def main():
-    parser = argparse.ArgumentParser("Database service")
-    parser.add_argument("-t", "--trace", action = "store_true")
-    ARGS = parser.parse_args()
+    try:
+        parser = argparse.ArgumentParser("Database service")
+        parser.add_argument("-t", "--trace", action = "store_true")
+        ARGS = parser.parse_args()
 
-    # Write to service.log
-    fh = logging.handlers.RotatingFileHandler(config.log_folder / "service.log", maxBytes = 10**7, backupCount = 20)
-    fh.setFormatter(log_formatter)
-    log.addHandler(fh)
+        # Write to service.log
+        fh = logging.handlers.RotatingFileHandler(config.log_folder / "service.log", maxBytes = 10**7, backupCount = 20)
+        fh.setFormatter(log_formatter)
+        log.addHandler(fh)
 
-    if ARGS.trace:
-        config.trace_debug = True
+        if ARGS.trace:
+            config.trace_debug = True
 
-    if config.trace_debug:
-        log.info("trace_debug enabled")
-        log.setLevel(logging.DEBUG)
+        if config.trace_debug:
+            log.info("trace_debug enabled")
+            log.setLevel(logging.DEBUG)
 
-    log.info("Starting service")
-    db.init_db()
-    db.start_listeners() 
+        log.info("Starting service")
+        db.init_db()
+        db.start_listeners() 
 
-    Pyro4.config.COMMTIMEOUT = 0.5
-    Pyro4.config.REQUIRE_EXPOSE = False
-    Pyro4.config.SERIALIZERS_ACCEPTED = set(["pickle"])
+        Pyro4.config.COMMTIMEOUT = 0.5
+        Pyro4.config.REQUIRE_EXPOSE = False
+        Pyro4.config.SERIALIZERS_ACCEPTED = set(["pickle"])
 
-    deamon = Pyro4.Daemon(host = "localhost", port = config.service_port)
-    uri = deamon.register(DBService, objectId = "cutespam-db")
+        deamon = Pyro4.Daemon(host = "localhost", port = config.service_port)
+        uri = deamon.register(DBService, objectId = "cutespam-db")
 
-    log.info("Listening on port %s", config.service_port)
-    log.info("uri: %s", uri)
+        log.info("Listening on port %s", config.service_port)
+        log.info("uri: %s", uri)
+    except KeyboardInterrupt:
+        log.warn("Keyboard interrupt!")
+        sys.exit(-1)
+
+    __closing = False
+    def interrupt(sig, frame):
+        nonlocal __closing
+        if not __closing:
+            log.warn("Keyboard interrupt, exiting")
+            deamon.close()
+        else: log.warn("Please be patient, service is currently shutting down")
+        __closing = True
+    signal.signal(signal.SIGINT, interrupt)
 
     deamon.requestLoop()
 
