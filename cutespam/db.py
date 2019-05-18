@@ -1,5 +1,5 @@
 import sqlite3, atexit, re, json, sys, os, time
-import logging
+import logging, queue
 
 from datetime import datetime
 from enum import Enum
@@ -12,7 +12,7 @@ from threading import Thread, RLock
 from contextlib import contextmanager
 from functools import wraps
 
-from cutespam import log
+from cutespam import log, OrderedSetQueue
 from cutespam.hashtree import HashTree
 from cutespam.config import config
 from cutespam.xmpmeta import CuteMeta, Rating
@@ -188,6 +188,31 @@ def start_listeners():
     db_listener.start()
 
 def listen_for_file_changes():
+    event_queue = OrderedSetQueue()
+
+    def retry(action, event): # TODO Untested
+        try: action()
+        except:
+            log.warn("Event %s failed, adding to backlog", event)
+            event_queue.put(event)
+
+    def poll_failed():
+        while True:
+            try:
+                while True:
+                    event = event_queue.get_nowait()
+                    file_observer.event_queue.put(event)
+                    event_queue.task_done()
+
+            except queue.Empty:
+                time.sleep(2)
+            
+
+    failed_retry = Thread(target = poll_failed)
+    failed_retry.name = "Thread to retry failed filesystem events"
+    failed_retry.daemon = True
+    failed_retry.start()
+
     class EventHandler(FileSystemEventHandler):
         def __init__(self):
             self._db = None
@@ -220,7 +245,7 @@ def listen_for_file_changes():
             file = Path(event.src_path)
             if not self.is_xmp_file(file): return
 
-            load_file(file, db = self.db)
+            retry(lambda: load_file(file, db = self.db), event)
         
         def on_deleted(self, event):
             file = Path(event.src_path)
@@ -229,13 +254,13 @@ def listen_for_file_changes():
             try:
                 uid = UUID(file.stem)
             except: return
-            remove_image(uid, db = self.db)
+            retry(lambda: remove_image(uid, db = self.db), event)
 
         def on_modified(self, event):
             file = Path(event.src_path)
             if not self.is_xmp_file(file): return
 
-            save_file(file, db = self.db)
+            retry(lambda: save_file(file, db = self.db), event)
 
     file_observer = Observer()
     file_observer.schedule(EventHandler(), str(config.image_folder.resolve()))
