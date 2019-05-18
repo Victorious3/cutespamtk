@@ -8,7 +8,7 @@ from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileDeletedEvent
 from math import ceil, floor
-from threading import Thread, Lock, RLock
+from threading import Thread, RLock
 from contextlib import contextmanager
 from functools import wraps
 
@@ -31,14 +31,10 @@ sqlite3.register_converter("PSet", lambda v: set(json.loads(v.decode())))
 
 # Make sure only one thread talks to this
 
-__folder_lock = Lock()
-__hashes_lock = Lock()
+#__folder_lock = Lock() # TODO These can deadlock, figure out a better way of handling this
+#__hashes_lock = Lock()
+__lock = RLock() # This effectively makes everything single threaded
 __hashes: HashTree = None
-
-@contextmanager
-def get_hashes():
-    with __hashes_lock:
-        yield __hashes
 
 __db: sqlite3.Connection = None
 __rpccon = None
@@ -133,12 +129,12 @@ def init_db():
             _load_file(xmpf, __db)
 
         __db.commit()
-        with open(config.hashdbf, "wb") as hashdbfp, __hashes_lock:
+        with open(config.hashdbf, "wb") as hashdbfp, __lock:
             log.info("Writing hashes to file...")
             __hashes.write_to_file(hashdbfp)
 
     else:
-        with open(config.hashdbf, "rb") as hashdbfp, __hashes_lock:
+        with open(config.hashdbf, "rb") as hashdbfp, __lock:
             log.info("Loading hashes from cache %r", str(config.hashdbf))
             __hashes = HashTree.read_from_file(hashdbfp, config.hash_length)
 
@@ -174,7 +170,7 @@ def init_db():
         __db.commit()
         __db.close()
 
-        with open(config.hashdbf, "wb") as hashdbfp, __hashes_lock:
+        with open(config.hashdbf, "wb") as hashdbfp, __lock:
             log.info("Writing hashes to file...")
             __hashes.write_to_file(hashdbfp)
         
@@ -259,7 +255,7 @@ def listen_for_db_changes():
         last_updated = datetime.utcnow()
 
         for data in modified:
-            with __folder_lock:
+            with __lock:
                 filename = xmp_file_for_uid(data["uid"])
                 meta = CuteMeta.from_file(filename)
 
@@ -395,8 +391,8 @@ def _remove_image(uid: UUID, db: sqlite3.Connection):
     db.execute("DELETE FROM Metadata WHERE uid = ?", (uid,))
 
     if cnthash == 1:
-        with get_hashes() as hashes:
-            try: hashes.remove(imghash) # Only one hash by this name, it doesnt exist anymore now
+        with __lock:
+            try: __hashes.remove(imghash) # Only one hash by this name, it doesnt exist anymore now
             except KeyError: pass
 
 @dbfun
@@ -405,7 +401,7 @@ def save_file(fp: Path, db: sqlite3.Connection = None):
     db.commit()
 
 def _save_file(xmpf: Path, db: sqlite3.Connection):
-    with __folder_lock:
+    with __lock:
         meta = CuteMeta.from_file(xmpf)
         f_last_updated = meta.last_updated
         uid = UUID(xmpf.stem)
@@ -498,8 +494,8 @@ def _load_file(xmpf: Path, db: sqlite3.Connection):
         timestamp = datetime.utcnow() # make sure we set the correct timestamp 
 
     try:
-        with get_hashes() as hashes: 
-            hashes.add(meta.hash)
+        with __lock: 
+            __hashes.add(meta.hash)
     except KeyError: log.warn("Possible duplicate %r", str(xmpf))
 
     db.execute(f"""
@@ -560,16 +556,16 @@ def find_similar_images_hash(h: str, threshold: float, limit = 10, db: sqlite3.C
     distance = ceil(config.hash_length * (1 - threshold))
 
     hashes = []
-    with get_hashes() as _hashes:
+    with __lock:
         # First see if the hash is inside there already
-        if h in _hashes: 
+        if h in __hashes: 
             found = True
             hashes.append((0, int(h, 16)))
             
-        else: _hashes.add(h) # Need to add it temporarily
+        else: __hashes.add(h) # Need to add it temporarily
         
-        hashes += _hashes.find_all_hamming_distance(h, distance, limit)
-        if not found: _hashes.remove(h)
+        hashes += __hashes.find_all_hamming_distance(h, distance, limit)
+        if not found: __hashes.remove(h)
 
     return __collect_uids_with_hashes(hashes, db)
 
@@ -583,8 +579,8 @@ def find_similar_images(uid: UUID, threshold: float, limit = 10, db: sqlite3.Con
 
     meta = get_meta(uid, db = db)
     distance = ceil(config.hash_length * (1 - threshold))
-    with get_hashes() as _hashes:
-        hashes = _hashes.find_all_hamming_distance(meta.hash, distance, limit)
+    with __lock:
+        hashes = __hashes.find_all_hamming_distance(meta.hash, distance, limit)
 
     return __collect_uids_with_hashes(hashes, db)
 
