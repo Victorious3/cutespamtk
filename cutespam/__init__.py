@@ -75,7 +75,7 @@ def make_request(url, method, ratelimit_retry = False):
                 seconds = 120
 
             if ratelimit_retry:
-                log.error("Rate limit exceeded on %s, will retry after %s seconds", url, seconds)
+                print("Rate limit exceeded on %s, will retry after %s seconds" % (url, seconds))
                 time.sleep(seconds)
                 return make_request(request, url)
             else:

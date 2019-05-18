@@ -21,6 +21,7 @@ class Provider:
         self.src = []
         self.meta = {}
         self.status = 200
+        self.exception = None
         self._regm = regm or re.match(self.regex, url)
 
     def _fetch(self): return
@@ -38,7 +39,7 @@ class Provider:
         except ssl.CertificateError:
             self.status = 495
         except Exception as e:
-            log.error("An exception occured while fetching url %s: %s", self.url, str(e))
+            self.exception = e
             self.status = 400
 
         if type(self) == Other: self.status == 200

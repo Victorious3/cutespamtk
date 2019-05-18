@@ -7,7 +7,7 @@ with open("requirements.txt") as f:
 setup (
     name = "cutespam",
     python_requires = ">3.6.0",
-    version = "0.0.1",
+    version = "0.1.0",
     description = "Cutespam CLI",
     author = "Vic Nigthtfall",
     author_email = "vic@nightfall.moe",
