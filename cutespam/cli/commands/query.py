@@ -13,7 +13,8 @@ def main(ARGS):
         caption = ARGS.caption,
         source = ARGS.source,
         rating = ARGS.rating,
-        limit = ARGS.limit
+        limit = ARGS.limit,
+        random = ARGS.random
     )
 
     if ARGS.count:
@@ -27,6 +28,8 @@ def args(parser):
         help = "Emits absolute file:// URIs instead of relative paths")
     parser.add_argument("--limit", type = int,
         help = "Limits the amount of results")
+    parser.add_argument("--random", action = "store_true",
+        help = "Orders the results randomly")
     parser.add_argument("--count", action = "store_true",
         help = "Count the number of results instead of emitting them")
     parser.add_argument("--author",

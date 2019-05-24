@@ -12,7 +12,7 @@ from threading import Thread, RLock
 from contextlib import contextmanager
 from functools import wraps
 
-from cutespam import log, OrderedSetQueue
+from cutespam import log, OrderedSetQueue, OrderedSet
 from cutespam.hashtree import HashTree
 from cutespam.config import config
 from cutespam.xmpmeta import CuteMeta, Rating
@@ -327,10 +327,11 @@ def query(
     keyword = None, not_keyword = None,
     author = None, caption = None, source = None,
     rating = None,
-    limit = None, db: sqlite3.Connection = None):
+    limit = None, random = False,
+    db: sqlite3.Connection = None) -> list:
 
-    all_uids = get_all_uids(db = db)
-    uids = set(all_uids)
+    all_uids = get_all_uids(db = db, random = random)
+    uids = OrderedSet(all_uids)
 
     def select_keywords(keywords):
         return set(d[0] for d in db.execute(
@@ -357,8 +358,8 @@ def query(
         uids &= all_uids - select_keywords(not_keyword)
 
     if limit and len(uids) > limit:
-        return set(list(uids)[:limit])
-    return uids
+        return list(uids)[:limit]
+    return list(uids)
 
 @dbfun
 def get_tab_complete_uids(uidstr: str, db: sqlite3.Connection = None):
@@ -374,9 +375,9 @@ def get_random_uid(db: sqlite3.Connection = None):
     return uid
 
 @dbfun
-def get_all_uids(db: sqlite3.Connection = None):
-    uids = db.execute("select uid from Metadata").fetchall()
-    return set(uid[0] for uid in uids)
+def get_all_uids(db: sqlite3.Connection = None, random = False) -> list:
+    uids = db.execute("select uid from Metadata" + (" order by random()" if random else "")).fetchall()
+    return list(uid[0] for uid in uids)
 
 @dbfun
 def get_meta(uid: UUID, db: sqlite3.Connection = None):
