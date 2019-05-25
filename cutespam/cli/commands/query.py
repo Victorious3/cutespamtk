@@ -5,6 +5,7 @@ DESCRIPTION = "Queries uids for tags or properties"
 
 def main(ARGS):
     from cutespam.db import query, picture_file_for_uid
+    import json
 
     filtered = query(
         keyword = ARGS.keyword, 
@@ -20,10 +21,16 @@ def main(ARGS):
     if ARGS.count:
         print(len(filtered))
     else:
-        for uid in filtered:
-            print(picture_file_for_uid(uid).absolute().as_uri() if ARGS.uri else uid)
+        l = [(picture_file_for_uid(uid).absolute().as_uri() if ARGS.uri else str(uid)) for uid in filtered]
+        if ARGS.json:
+            print(json.dumps(l, indent = 4))
+        else:
+            print("\n".join(l))
+
 
 def args(parser):
+    parser.add_argument("--json", action = "store_true",
+        help = "Outputs a json array instead of an unformatted list")
     parser.add_argument("--uri", action = "store_true",
         help = "Emits absolute file:// URIs instead of relative paths")
     parser.add_argument("--limit", type = int,
