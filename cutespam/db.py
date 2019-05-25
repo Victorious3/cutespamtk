@@ -330,7 +330,7 @@ def query(
     limit = None, random = False,
     db: sqlite3.Connection = None) -> list:
 
-    all_uids = get_all_uids(db = db, random = random)
+    all_uids = OrderedSet(get_all_uids(db = db, random = random))
     uids = OrderedSet(all_uids)
 
     def select_keywords(keywords):
