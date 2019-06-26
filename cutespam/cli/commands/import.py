@@ -11,7 +11,7 @@ def main(ARGS):
     from pathlib import Path
 
     from cutespam import yn_choice
-    from cutespam.api import read_meta_from_dict
+    from cutespam.api import read_meta_from_dict, get_cached_file
     from cutespam.iqdb import iqdb, upscale
     from cutespam.hash import hash_img
     from cutespam.xmpmeta import CuteMeta
@@ -46,10 +46,13 @@ def main(ARGS):
         with open(file, "rb") as fp:
             result = iqdb(file = fp, threshold = 0.9)
         
-        source, data, service = upscale(result, resolution)
+        source, data, service, r_resolution = upscale(result, resolution)
         if not source:
             if not ARGS.add_no_iqdb and (ARGS.skip_no_iqdb or not yn_choice("No relevant images found. Add anyways?")): continue
         else: print("Found image on", service)
+        
+        if r_resolution > resolution:
+            file = get_cached_file(source)
         
         
         meta.uid = uuid4()

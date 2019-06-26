@@ -94,7 +94,7 @@ def iqdb_upscale(img, threshold = 0.9, service = None) -> IQDBResult:
         width, height = imgf.size
         resolution = width * height
 
-    found_img, meta, service = upscale(results, resolution, service)
+    found_img, meta, service, _ = upscale(results, resolution, service)
 
     img = found_img or img
     

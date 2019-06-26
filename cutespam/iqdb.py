@@ -147,4 +147,4 @@ def upscale(iqdb_res, resolution, service = "file"):
 
     meta["src"] = src
 
-    return found_img, meta, service
+    return found_img, meta, service, resolution
