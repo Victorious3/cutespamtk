@@ -90,14 +90,15 @@ export async function XSS(tabid, fun) {
 
 export function extract_twitter_url() {
     let gallery = document.querySelector(".gallery-overlay")
-    computed = window.getComputedStyle(gallery)
-    if (computed.display == "block") {
+    let computed = null
+    if (gallery) computed = window.getComputedStyle(gallery)
+    if (computed && computed.display == "block") {
         // Curently viewing an image in the gallery
         image = document.querySelector(".Gallery-media img")
         return image.src
     } else {
-        // Check if this is a post
-        if (document.URL.indexOf("/post/")) {
+        // Check if this is a status
+        if (document.URL.indexOf("/status/")) {
             // Just return the url then
             return document.URL
         }
