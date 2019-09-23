@@ -234,7 +234,8 @@ chrome.tabs.query({active: true, currentWindow: true}, async function(tabs) {
         DATA.via = [decodeURIComponent(urlParams.get("via"))]
         
         // resize yourself
-        let body = document.querySelector("body")
+        // TODO Fix resize
+        /*let body = document.querySelector("body")
         let html = document.querySelector("html")
         html.style.overflow = "hidden"
 
@@ -265,7 +266,7 @@ chrome.tabs.query({active: true, currentWindow: true}, async function(tabs) {
                 html.style.overflow = "initial"
             }
             auto_resized = false
-        })
+        })*/
     } else {
         DATA.url = tab.url
         let url = new URL(DATA.url)
