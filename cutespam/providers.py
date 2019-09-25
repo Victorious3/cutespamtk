@@ -166,17 +166,20 @@ class TwitterStatus(Provider):
             text = decode_all(file)
 
         html = BeautifulSoup(text, features = "html.parser")
-        data = [(e.parent.parent["class"], e) for e in html.select("div[data-image-url]")]
+        #data = [(e.parent.parent["class"], e) for e in html.select("div[data-image-url]")]
+        #
+        #first = data[0]
+        #if   "AdaptiveMedia-doublePhoto" in first[0]: amount = 2
+        #elif "AdaptiveMedia-triplePhoto" in first[0]: amount = 3
+        #elif "AdaptiveMedia-quadPhoto"   in first[0]: amount = 4
+        #else: amount = 1 # TODO Check if format was changed
+        #
+        #self.src.append(first[1]["data-image-url"])
+        #if amount > 1:
+        #    self.meta["additional"] = [e[1]["data-image-url"] for i, e in enumerate(data) if 0 < i < amount]
 
-        first = data[0]
-        if   "AdaptiveMedia-doublePhoto" in first[0]: amount = 2
-        elif "AdaptiveMedia-triplePhoto" in first[0]: amount = 3
-        elif "AdaptiveMedia-quadPhoto"   in first[0]: amount = 4
-        else: amount = 1 # TODO Check if format was changed
-
-        self.src.append(first[1]["data-image-url"])
-        if amount > 1:
-            self.meta["additional"] = [e[1]["data-image-url"] for i, e in enumerate(data) if 0 < i < amount]
+        data = html.select("div[tabindex='0']")[0].select("div[data-image-url]")[0]
+        self.src.append(data["data-image-url"])
 
 class HoloCroma(Provider):
     regex = r".*holo.croma25td.com/.*"
