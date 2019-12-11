@@ -1,5 +1,8 @@
 
 import urllib
+import urllib.error
+import urllib.request
+
 import ssl
 import validators
 import json
@@ -157,7 +160,7 @@ class ShuuShuu(Provider):
         self.src.append(url)
 
 class TwitterStatus(Provider):
-    regex = r".*twitter.com.*/status/.*(/photo/(?P<photo_nr>[/d]))?"
+    regex = r".*twitter.com.*/status/\d*(/photo/(?P<photo_nr>[\d]))?"
     service = "twitter"
 
     def _fetch(self):
@@ -178,7 +181,8 @@ class TwitterStatus(Provider):
         #if amount > 1:
         #    self.meta["additional"] = [e[1]["data-image-url"] for i, e in enumerate(data) if 0 < i < amount]
 
-        data = html.select("div[tabindex='0']")[0].select("div[data-image-url]")[0]
+        index = int(self._regm.group("photo_nr") or 1) - 1
+        data = html.select("div[tabindex='0']")[0].select("div[data-image-url]")[index]
         self.src.append(data["data-image-url"])
 
 class HoloCroma(Provider):

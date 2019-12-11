@@ -328,7 +328,7 @@ def query(
     author = None, caption = None, source = None,
     rating = None,
     limit = None, random = False,
-    db: sqlite3.Connection = None) -> list:
+    db: sqlite3.Connection = None, **kwargs) -> list:
 
     all_uids = OrderedSet(get_all_uids(db = db, random = random))
     uids = OrderedSet(all_uids)

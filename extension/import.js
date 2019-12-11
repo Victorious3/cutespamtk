@@ -210,7 +210,7 @@ window.addEventListener("load", function() {
             } else if (window.clipboardData && window.clipboardData.getData) {
                 text = window.clipboardData.getData("Text");
             }
-             document.execCommand("insertHTML", false, text);
+            document.execCommand("insertHTML", false, text);
         });
     }
 
