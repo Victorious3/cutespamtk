@@ -188,7 +188,7 @@ window.addEventListener("load", function() {
         })
         span.addEventListener("keydown", function(event) {
             if (event.code == "Backspace") {
-                if (this.innerText == "" && ul.children.length > 1) {
+                if (span.innerText == "" && ul.children.length > 1) {
                     ul.removeChild(ul.children[ul.children.length - 2])
                 }
             } else if (event.code == "Space" || event.code == "Enter") {

@@ -60,9 +60,9 @@ def all_files_in_folders(folders):
 def decode_all(file):
     return "\n".join(b.decode("utf-8") for b in file.readlines())
 
-def make_request(url, method, ratelimit_retry = False):
+def make_request(url, method, ratelimit_retry = False, useragent = config.useragent):
     try:
-        request = urllib.request.Request(url, headers = {'User-Agent': config.useragent})
+        request = urllib.request.Request(url, headers = {'User-Agent': useragent})
         request.get_method = lambda: method
         response = urllib.request.urlopen(request)
         return response
