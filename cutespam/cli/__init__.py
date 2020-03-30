@@ -9,6 +9,11 @@ class argrange:
     def __iter__(self):
         return iter([self.min, self.max])
 
+def KeywordCompleter(prefix, **kwargs):
+    from cutespam.db import get_tab_complete_keywords
+    completion = list(get_tab_complete_keywords(prefix))
+    return completion
+
 def UUIDCompleter(prefix, **kwargs):
     from cutespam.db import get_tab_complete_uids
     completion = [str(uid) for uid in get_tab_complete_uids(prefix)]
