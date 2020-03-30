@@ -9,7 +9,7 @@ setup (
     python_requires = ">3.6.0",
     version = "0.1.0",
     description = "Cutespam CLI",
-    author = "Vic Nigthtfall",
+    author = "Vic Nightfall",
     author_email = "vic@nightfall.moe",
     packages = find_packages(),
     install_requires = requirements,
@@ -21,6 +21,7 @@ setup (
             "cutespam = cutespam.cli.cli:main",
             "cutespam-rest = cutespam.cli.rest:main",
             "cutespam-db = cutespam.cli.service:main",
+            "cutespam-app = cutespam.app.app:main",
             "iqdb = cutespam.cli.iqdb:main"
         ]
     },
