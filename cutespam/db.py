@@ -313,7 +313,7 @@ def xmp_file_for_uid(uid) -> Path:
                 
 def picture_file_for_uid(uid) -> Path:
     if isinstance(uid, str):
-        uid = UUID(str)
+        uid = UUID(uid)
 
     filename = config.image_folder / str(uid)
     for ext in config.extensions:
