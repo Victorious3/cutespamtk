@@ -1,162 +1,107 @@
 import sys, random
+
+from pathlib import Path
+from threading import Thread
+from queue import LifoQueue
+
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QScrollArea, QLayout, QStyle
+from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QScrollBar, QHBoxLayout
 
 from cutespam.db import picture_file_for_uid, get_all_uids
 
-# https://stackoverflow.com/questions/41621354/pyqt-wrap-around-layout-of-widgets-inside-a-qscrollarea
-class FlowLayout(QLayout):
-    def __init__(self, parent=None, margin=-1, hspacing=-1, vspacing=-1):
-        super().__init__(parent)
-        self._hspacing = hspacing
-        self._vspacing = vspacing
-        self._items = []
-        self.setContentsMargins(margin, margin, margin, margin)
+IMG_LOADING = QImage(str(Path(__file__).parent / "image_loading.png"))
+IMG_SIZE = 150
 
-    def __del__(self):
-        del self._items[:]
+class PictureViewer(QWidget):
+    def __init__(self, uids, scrollbar, flags = QtCore.Qt.WindowFlags()):
+        super().__init__(flags = flags)
+        self.scrollbar = scrollbar
+        self.set_uids(uids)
 
-    def addItem(self, item):
-        self._items.append(item)
+        def on_scroll():
+            self.update()
+        scrollbar.valueChanged.connect(on_scroll)
 
-    def horizontalSpacing(self):
-        if self._hspacing >= 0:
-            return self._hspacing
-        else:
-            return self.smartSpacing(
-                QStyle.PM_LayoutHorizontalSpacing)
+        self.image_queue = LifoQueue()
 
-    def verticalSpacing(self):
-        if self._vspacing >= 0:
-            return self._vspacing
-        else:
-            return self.smartSpacing(
-                QStyle.PM_LayoutVerticalSpacing)
+        def load_images():
+            while True:
+                uid = self.image_queue.get(block = True)
+                image = QImage(str(picture_file_for_uid(uid))).scaled(
+                    IMG_SIZE, IMG_SIZE, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+                self.images[uid] = image
+                self.update()
 
-    def count(self):
-        return len(self._items)
+        image_loading_thread = Thread(target = load_images)
+        image_loading_thread.setDaemon(True)
+        image_loading_thread.start()
 
-    def itemAt(self, index):
-        if 0 <= index < len(self._items):
-            return self._items[index]
+    def set_uids(self, uids):
+        self.uids = uids
+        self.images = {}
 
-    def takeAt(self, index):
-        if 0 <= index < len(self._items):
-            return self._items.pop(index)
+    def get_image(self, uid):
+        if uid in self.images:
+            uid = self.images[uid]
+            if uid: return uid
+            return IMG_LOADING
 
-    def expandingDirections(self):
-        return QtCore.Qt.Orientations(0)
+        self.images[uid] = None
+        self.image_queue.put(uid, block = True)
+        return IMG_LOADING
 
-    def hasHeightForWidth(self):
-        return True
+    def paintEvent(self, event):
+        super().paintEvent(event)
 
-    def heightForWidth(self, width):
-        return self.doLayout(QtCore.QRect(0, 0, width, 0), True)
+        rect = event.rect()
 
-    def setGeometry(self, rect):
-        super().setGeometry(rect)
-        self.doLayout(rect, False)
+        height = rect.height() // IMG_SIZE
+        width = rect.width() // IMG_SIZE
 
-    def sizeHint(self):
-        return self.minimumSize()
+        self.scrollbar.setMaximum(len(self.uids) // width)
+        self.scrollbar.setPageStep(1)
 
-    def minimumSize(self):
-        size = QtCore.QSize()
-        for item in self._items:
-            size = size.expandedTo(item.minimumSize())
-        left, top, right, bottom = self.getContentsMargins()
-        size += QtCore.QSize(left + right, top + bottom)
-        return size
+        painter = QtGui.QPainter(self)
+        for i in range(0, width):
+            for j in range(0, height):
+                x = i * IMG_SIZE
+                y = j * IMG_SIZE
+                index = i + ((j + self.scrollbar.value()) * width)
+                if index < len(self.uids):
+                    image = self.get_image(self.uids[index])
+                    painter.drawImage(x, y, image)
 
-    def doLayout(self, rect, testonly):
-        left, top, right, bottom = self.getContentsMargins()
-        effective = rect.adjusted(+left, +top, -right, -bottom)
-        x = effective.x()
-        y = effective.y()
-        lineheight = 0
-        for item in self._items:
-            widget = item.widget()
-            hspace = self.horizontalSpacing()
-            if hspace == -1:
-                hspace = widget.style().layoutSpacing(
-                    QtGui.QSizePolicy.PushButton,
-                    QtGui.QSizePolicy.PushButton, QtCore.Qt.Horizontal)
-            vspace = self.verticalSpacing()
-            if vspace == -1:
-                vspace = widget.style().layoutSpacing(
-                    QtGui.QSizePolicy.PushButton,
-                    QtGui.QSizePolicy.PushButton, QtCore.Qt.Vertical)
-            nextX = x + item.sizeHint().width() + hspace
-            if nextX - hspace > effective.right() and lineheight > 0:
-                x = effective.x()
-                y = y + lineheight + vspace
-                nextX = x + item.sizeHint().width() + hspace
-                lineheight = 0
-            if not testonly:
-                item.setGeometry(
-                    QtCore.QRect(QtCore.QPoint(x, y), item.sizeHint()))
-            x = nextX
-            lineheight = max(lineheight, item.sizeHint().height())
-        return y + lineheight - rect.y() + bottom
+        painter.end()
 
-    def smartSpacing(self, pm):
-        parent = self.parent()
-        if parent is None:
-            return -1
-        elif parent.isWidgetType():
-            return parent.style().pixelMetric(pm, None, parent)
-        else:
-            return parent.spacing()
+    def wheelEvent(self, wheel_event):
+        self.scrollbar.wheelEvent(wheel_event)
+        self.update()
+        
+
 
 class MainWindow(QMainWindow):
-    def __init__(self, uids):
+    def __init__(self):
         super().__init__()
-        self.uids = uids
+        
+        layout = QHBoxLayout()
+        frame = QWidget()
+        frame.setLayout(layout)
 
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.verticalScrollBar().valueChanged.connect(self.on_scroll)
-        image_pane = QWidget()
-        layout = FlowLayout()
-
-        self.images = []
-        for uid in uids:
-            image = QLabel()
-
-            image.setFixedWidth(150)
-            image.setFixedHeight(150)
-            image.setAlignment(QtCore.Qt.AlignCenter)
-            layout.addWidget(image)
-            self.images.append(image)
-
-        image_pane.setLayout(layout)
-        scroll_area.setWidget(image_pane)
-
-        self.setCentralWidget(scroll_area)
+        scrollbar = QScrollBar(QtCore.Qt.Vertical)
+        image_pane = PictureViewer(get_all_uids(), scrollbar)
+        
+        layout.addWidget(image_pane)
+        layout.addWidget(scrollbar)
+        self.setCentralWidget(frame)
         self.setWindowTitle("Cutespam")
-
-    def on_scroll(self):
-        print(self.sender().value())
-
-from threading import Thread
-import time
 
 def main():
     app = QtWidgets.QApplication([])
 
-    window = MainWindow(get_all_uids())
+    window = MainWindow()
     window.resize(800, 600)
     window.show()
-
-    def load_images():
-        for i, image in enumerate(window.images):
-            pixmap = QPixmap(str(picture_file_for_uid(window.uids[i])))
-            image.setPixmap(pixmap.scaled(150, 150, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
-            time.sleep(0.01)
-
-    thread = Thread(target = load_images)
-    thread.start()
 
     sys.exit(app.exec_())
 
