@@ -5,7 +5,7 @@ from threading import Thread
 from queue import LifoQueue
 
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtGui import QPixmap, QImage, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QScrollBar, QHBoxLayout
 
 from cutespam.db import picture_file_for_uid, get_all_uids
@@ -17,7 +17,9 @@ class PictureViewer(QWidget):
     def __init__(self, uids, scrollbar, flags = QtCore.Qt.WindowFlags()):
         super().__init__(flags = flags)
         self.scrollbar = scrollbar
-        self.set_uids(uids)
+        self.uids = uids
+        self.images = {}
+        self.selected_index = -1
 
         def on_scroll():
             self.update()
@@ -37,10 +39,6 @@ class PictureViewer(QWidget):
         image_loading_thread.setDaemon(True)
         image_loading_thread.start()
 
-    def set_uids(self, uids):
-        self.uids = uids
-        self.images = {}
-
     def get_image(self, uid):
         if uid in self.images:
             uid = self.images[uid]
@@ -51,13 +49,14 @@ class PictureViewer(QWidget):
         self.image_queue.put(uid, block = True)
         return IMG_LOADING
 
+    def get_selected_uid(self):
+        return self.uids[self.selected_index]
+
     def paintEvent(self, event):
         super().paintEvent(event)
 
-        rect = event.rect()
-
-        height = rect.height() // IMG_SIZE
-        width = rect.width() // IMG_SIZE
+        height = max(self.height() // IMG_SIZE, 1)
+        width = max(self.width() // IMG_SIZE, 1)
 
         self.scrollbar.setMaximum(len(self.uids) // width)
         self.scrollbar.setPageStep(1)
@@ -67,19 +66,33 @@ class PictureViewer(QWidget):
             for j in range(0, height):
                 x = i * IMG_SIZE
                 y = j * IMG_SIZE
-                index = i + ((j + self.scrollbar.value()) * width)
+                index = i + (j + self.scrollbar.value()) * width
                 if index < len(self.uids):
+                    if index == self.clicked_index:
+                        painter.fillRect(x, y, IMG_SIZE, IMG_SIZE, QColor.fromRgb(0xCCE8FF))
+
                     image = self.get_image(self.uids[index])
-                    painter.drawImage(x, y, image)
+                    painter.drawImage(x + IMG_SIZE / 2 - image.width() / 2, y + IMG_SIZE / 2 - image.height() / 2, image)
+
+                    if index == self.clicked_index:
+                        painter.setPen(QColor.fromRgb(0x99D1FF))
+                        painter.drawRect(x, y, IMG_SIZE - 1, IMG_SIZE - 1)
 
         painter.end()
+
+    def mousePressEvent(self, press_event):
+        width = max(self.width() // IMG_SIZE, 1)
+
+        x = press_event.x() // IMG_SIZE
+        y = press_event.y() // IMG_SIZE
+
+        self.selected_index = x + (y + self.scrollbar.value()) * width
+        self.update()
 
     def wheelEvent(self, wheel_event):
         self.scrollbar.wheelEvent(wheel_event)
         self.update()
         
-
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
