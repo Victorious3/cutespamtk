@@ -68,13 +68,13 @@ class PictureViewer(QWidget):
                 y = j * IMG_SIZE
                 index = i + (j + self.scrollbar.value()) * width
                 if index < len(self.uids):
-                    if index == self.clicked_index:
+                    if index == self.selected_index:
                         painter.fillRect(x, y, IMG_SIZE, IMG_SIZE, QColor.fromRgb(0xCCE8FF))
 
                     image = self.get_image(self.uids[index])
                     painter.drawImage(x + IMG_SIZE / 2 - image.width() / 2, y + IMG_SIZE / 2 - image.height() / 2, image)
 
-                    if index == self.clicked_index:
+                    if index == self.selected_index:
                         painter.setPen(QColor.fromRgb(0x99D1FF))
                         painter.drawRect(x, y, IMG_SIZE - 1, IMG_SIZE - 1)
 
@@ -106,6 +106,7 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(image_pane)
         layout.addWidget(scrollbar)
+
         self.setCentralWidget(frame)
         self.setWindowTitle("Cutespam")
 
@@ -113,7 +114,7 @@ def main():
     app = QtWidgets.QApplication([])
 
     window = MainWindow()
-    window.resize(800, 600)
+    window.resize(800, 650)
     window.show()
 
     sys.exit(app.exec_())
