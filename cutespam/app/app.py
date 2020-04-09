@@ -6,17 +6,18 @@ from queue import LifoQueue
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtGui import QPixmap, QImage, QColor
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QScrollBar, QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QScrollBar, QHBoxLayout, QSplitter, QLabel
 
 from cutespam.db import picture_file_for_uid, get_all_uids
 
 IMG_LOADING = QImage(str(Path(__file__).parent / "image_loading.png"))
-IMG_SIZE = 150
+IMG_SIZE = 125
 
-class PictureViewer(QWidget):
-    def __init__(self, uids, scrollbar, flags = QtCore.Qt.WindowFlags()):
+class PictureGrid(QWidget):
+    def __init__(self, uids, scrollbar, picture_viewer, flags = QtCore.Qt.WindowFlags()):
         super().__init__(flags = flags)
         self.scrollbar = scrollbar
+        self.picture_viewer = picture_viewer
         self.uids = uids
         self.images = {}
         self.selected_index = -1
@@ -88,30 +89,54 @@ class PictureViewer(QWidget):
 
         self.selected_index = x + (y + self.scrollbar.value()) * width
         self.update()
+        self.picture_viewer.set_image(self.get_selected_uid())
+        self.picture_viewer.update()
 
     def wheelEvent(self, wheel_event):
         self.scrollbar.wheelEvent(wheel_event)
         self.update()
+
+class PictureViewer(QLabel):
+    def __init__(self):
+        super().__init__()
+
+    def set_image(self, uid):
+        self.setPixmap(QPixmap(str(picture_file_for_uid(uid))).scaled(
+            self.width(), self.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+        
         
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+
+        uids = get_all_uids()
         
         layout = QHBoxLayout()
-        frame = QWidget()
-        frame.setLayout(layout)
+        main_splitter = QSplitter()
+        picture_viewer = PictureViewer()
+
+        picture_frame = QWidget()
+        picture_frame.setLayout(layout)
 
         scrollbar = QScrollBar(QtCore.Qt.Vertical)
-        image_pane = PictureViewer(get_all_uids(), scrollbar)
+        image_pane = PictureGrid(uids, scrollbar, picture_viewer)
         
         layout.addWidget(image_pane)
         layout.addWidget(scrollbar)
 
-        self.setCentralWidget(frame)
+        main_splitter.addWidget(picture_frame)
+        main_splitter.addWidget(picture_viewer)
+
+        self.setCentralWidget(main_splitter)
         self.setWindowTitle("Cutespam")
 
 def main():
     app = QtWidgets.QApplication([])
+    #app.setStyleSheet("""
+    #    QSplitter::handle {
+    #        background-color: #333;
+    #    }
+    #""")
 
     window = MainWindow()
     window.resize(800, 650)
