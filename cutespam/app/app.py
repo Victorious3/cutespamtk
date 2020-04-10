@@ -6,7 +6,7 @@ from queue import LifoQueue
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtGui import QPixmap, QImage, QColor
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QScrollBar, QHBoxLayout, QSplitter, QLabel
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QScrollBar, QHBoxLayout, QSplitter, QLineEdit, QSizePolicy
 
 from cutespam.db import picture_file_for_uid, get_all_uids
 
@@ -96,13 +96,20 @@ class PictureGrid(QWidget):
         self.scrollbar.wheelEvent(wheel_event)
         self.update()
 
-class PictureViewer(QLabel):
+class PictureViewer(QWidget):
     def __init__(self):
         super().__init__()
+        self.image = None
 
     def set_image(self, uid):
-        self.setPixmap(QPixmap(str(picture_file_for_uid(uid))).scaled(
-            self.width(), self.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+        self.image = QImage(str(picture_file_for_uid(uid)))
+
+    def paintEvent(self, event):
+        if self.image:
+            painter = QtGui.QPainter(self)
+            image = self.image.scaled(self.width(), self.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+            painter.drawImage(self.width() / 2 - image.width() / 2, self.height() / 2 - image.height() / 2, image)
+            painter.end()
         
         
 class MainWindow(QMainWindow):
@@ -126,17 +133,27 @@ class MainWindow(QMainWindow):
 
         main_splitter.addWidget(picture_frame)
         main_splitter.addWidget(picture_viewer)
+        main_splitter.setSizes([300, 200])
 
         self.setCentralWidget(main_splitter)
         self.setWindowTitle("Cutespam")
 
+        menu = self.menuBar()
+        file = menu.addMenu("File")
+        file.addAction("Import")
+
+        search = QLineEdit(self)
+        menu.setCornerWidget(search, QtCore.Qt.TopRightCorner)
+
 def main():
     app = QtWidgets.QApplication([])
-    #app.setStyleSheet("""
-    #    QSplitter::handle {
-    #        background-color: #333;
-    #    }
-    #""")
+
+    # TODO Proper style
+    app.setStyleSheet("""
+        QSplitter::handle {
+            background-color: #333;
+        }
+    """)
 
     window = MainWindow()
     window.resize(800, 650)
