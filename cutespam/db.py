@@ -362,17 +362,26 @@ def query(
     return list(uids)
 
 @dbfun
-def get_tab_complete_keywords(keywordstr: str = None, db: sqlite3.Connection = None):
-    keywords = db.execute("select distinct keyword from Metadata_Keywords where keyword like ? order by keyword", ((keywordstr if keywordstr else "") + "%",))
+def get_tab_complete_keywords(keywordstr: str = None, db: sqlite3.Connection = None) -> set:
+    keywords = db.execute("select distinct keyword from Metadata_Keywords where keyword like ? order by keyword", ((keywordstr if keywordstr else "") + "%",)).fetchall()
     return set(keyword[0] for keyword in keywords)
 
 @dbfun
-def get_uids_from_keyword(keyword: str, db: sqlite3.Connection = None):
-    uids = db.execute("select uid from Metadata_Keywords where keyword like ? order by keyword", (keyword,))
+def get_uids_from_keyword(keyword: str, db: sqlite3.Connection = None) -> set:
+    uids = db.execute("select uid from Metadata_Keywords where keyword like ? order by keyword", (keyword,)).fetchall()
     return set(uid[0] for uid in uids)
 
 @dbfun
-def get_tab_complete_uids(uidstr: str, db: sqlite3.Connection = None):
+def get_uids_from_keyword_list(keywords, db: sqlite3.Connection = None) -> set:
+    ret_uids = set(get_all_uids(db = db))
+    for keyword in keywords:
+        uids = get_uids_from_keyword(keyword, db = db)
+        ret_uids &= uids
+
+    return ret_uids
+
+@dbfun
+def get_tab_complete_uids(uidstr: str, db: sqlite3.Connection = None) -> set:
     """ Returns a list of tab completions for a starting uid """
 
     uidstr = uidstr.replace("-", "")

@@ -8,7 +8,7 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtGui import QPixmap, QImage, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QScrollBar, QHBoxLayout, QSplitter, QLineEdit, QSizePolicy, QCompleter
 
-from cutespam.db import picture_file_for_uid, get_all_uids, get_tab_complete_keywords
+from cutespam.db import picture_file_for_uid, get_all_uids, get_tab_complete_keywords, get_uids_from_keyword_list
 
 IMG_LOADING = QImage(str(Path(__file__).parent / "image_loading.png"))
 IMG_SIZE = 125
@@ -185,8 +185,11 @@ class MainWindow(QMainWindow):
         menu.setCornerWidget(search)
 
         def on_typed():
-            last_word = search.text().split(" ")[-1]
+            words = search.text().split(" ")
+            last_word = words[-1]
             completer.model().setStringList(get_tab_complete_keywords(last_word))
+            image_pane.uids = list(get_uids_from_keyword_list(words))
+            image_pane.update()
 
         search.textChanged.connect(on_typed)
 
