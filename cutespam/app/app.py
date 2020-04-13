@@ -188,7 +188,12 @@ class MainWindow(QMainWindow):
             words = search.text().split(" ")
             last_word = words[-1]
             completer.model().setStringList(get_tab_complete_keywords(last_word))
-            image_pane.uids = list(get_uids_from_keyword_list(words))
+
+            if len(search.text()) == 0:
+                image_pane.uids = get_all_uids()
+            else:
+                image_pane.uids = list(get_uids_from_keyword_list(words))
+            
             image_pane.update()
 
         search.textChanged.connect(on_typed)
