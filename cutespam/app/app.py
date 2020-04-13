@@ -6,27 +6,27 @@ from queue import LifoQueue
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtGui import QPixmap, QImage, QColor
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QScrollBar, QHBoxLayout, QSplitter, QLineEdit, QSizePolicy
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QScrollBar, QHBoxLayout, QSplitter, QLineEdit, QSizePolicy, QCompleter
 
-from cutespam.db import picture_file_for_uid, get_all_uids
+from cutespam.db import picture_file_for_uid, get_all_uids, get_tab_complete_keywords
 
 IMG_LOADING = QImage(str(Path(__file__).parent / "image_loading.png"))
 IMG_SIZE = 125
 
 class PictureGrid(QWidget):
-    def __init__(self, uids, scrollbar, picture_viewer, flags = QtCore.Qt.WindowFlags()):
-        super().__init__(flags = flags)
+    def __init__(self, parent, uids, scrollbar, picture_viewer, flags = QtCore.Qt.WindowFlags()):
+        super().__init__(parent, flags = flags)
         self.scrollbar = scrollbar
         self.picture_viewer = picture_viewer
         self.uids = uids
         self.images = {}
         self.selected_index = -1
 
-        def on_scroll():
-            self.update()
-        scrollbar.valueChanged.connect(on_scroll)
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
-        self.image_queue = LifoQueue()
+        scrollbar.valueChanged.connect(lambda: self.update())
+
+        self.image_queue = LifoQueue() # TODO Use max size
 
         def load_images():
             while True:
@@ -89,6 +89,7 @@ class PictureGrid(QWidget):
 
         self.selected_index = x + (y + self.scrollbar.value()) * width
         self.update()
+
         self.picture_viewer.set_image(self.get_selected_uid())
         self.picture_viewer.update()
 
@@ -97,8 +98,8 @@ class PictureGrid(QWidget):
         self.update()
 
 class PictureViewer(QWidget):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent = None):
+        super().__init__(parent)
         self.image = None
 
     def set_image(self, uid):
@@ -110,8 +111,44 @@ class PictureViewer(QWidget):
             image = self.image.scaled(self.width(), self.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
             painter.drawImage(self.width() / 2 - image.width() / 2, self.height() / 2 - image.height() / 2, image)
             painter.end()
-        
-        
+
+# https://stackoverflow.com/questions/47832971/qcompleter-supporting-multiple-items-like-stackoverflow-tag-field
+class TagLineEdit(QLineEdit):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.multipleCompleter = None
+
+    def keyPressEvent(self, event):
+        super().keyPressEvent(event)
+        if not self.multipleCompleter:
+            return
+        c = self.multipleCompleter
+        if self.text() == "":
+            return
+        c.setCompletionPrefix(self.cursorWord(self.text()))
+        if len(c.completionPrefix()) < 1:
+            c.popup().hide()
+            return
+        c.complete()
+
+    def cursorWord(self, sentence):
+        p = sentence.rfind(" ")
+        if p == -1:
+            return sentence
+        return sentence[p + 1:]
+
+    def insertCompletion(self, text):
+        p = self.text().rfind(" ")
+        if p == -1:
+            self.setText(text)
+        else:
+            self.setText(self.text()[:p+1]+ text)
+
+    def setMultipleCompleter(self, completer):
+        self.multipleCompleter = completer
+        self.multipleCompleter.setWidget(self)
+        completer.activated.connect(self.insertCompletion)
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -119,21 +156,21 @@ class MainWindow(QMainWindow):
         uids = get_all_uids()
         
         layout = QHBoxLayout()
-        main_splitter = QSplitter()
-        picture_viewer = PictureViewer()
+        main_splitter = QSplitter(self)
+        picture_viewer = PictureViewer(main_splitter)
 
-        picture_frame = QWidget()
+        picture_frame = QWidget(main_splitter)
         picture_frame.setLayout(layout)
 
         scrollbar = QScrollBar(QtCore.Qt.Vertical)
-        image_pane = PictureGrid(uids, scrollbar, picture_viewer)
+        image_pane = PictureGrid(picture_frame, uids, scrollbar, picture_viewer)
         
         layout.addWidget(image_pane)
         layout.addWidget(scrollbar)
 
         main_splitter.addWidget(picture_frame)
         main_splitter.addWidget(picture_viewer)
-        main_splitter.setSizes([300, 200])
+        main_splitter.setSizes([300, 200]) # TODO What do these numbers do?
 
         self.setCentralWidget(main_splitter)
         self.setWindowTitle("Cutespam")
@@ -142,8 +179,16 @@ class MainWindow(QMainWindow):
         file = menu.addMenu("File")
         file.addAction("Import")
 
-        search = QLineEdit(self)
-        menu.setCornerWidget(search, QtCore.Qt.TopRightCorner)
+        search = TagLineEdit(self)
+        completer = QCompleter(["foo", "bar", "baz"], search)
+        search.setMultipleCompleter(completer)
+        menu.setCornerWidget(search)
+
+        def on_typed():
+            last_word = search.text().split(" ")[-1]
+            completer.model().setStringList(get_tab_complete_keywords(last_word))
+
+        search.textChanged.connect(on_typed)
 
 def main():
     app = QtWidgets.QApplication([])
