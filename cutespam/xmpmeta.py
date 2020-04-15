@@ -261,6 +261,10 @@ class CuteMeta(Meta):
             for collection in self.collections:
                 new_keywords.add("collection:" + collection)
         
+        if self.authors:
+            for author in self.authors:
+                new_keywords.add("author:" + author)
+        
         if new_keywords != self.keywords:
             self.keywords = new_keywords
             return True
