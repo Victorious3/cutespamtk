@@ -109,7 +109,7 @@ def init_db():
 
         CREATE TABLE IF not EXISTS Metadata_Keywords (
             uid UUID not null,
-            keyword TEXT NOT NULL
+            keyword TEXT NOT NULL CHECK (keyword REGEXP '{config.tag_regex}')
         );
 
         CREATE TABLE IF not EXISTS Metadata_Collections (
@@ -407,9 +407,9 @@ def get_meta(uid: UUID, db: sqlite3.Connection = None):
         setattr(meta, name, v)
 
     keywords = db.execute("select keyword from Metadata_Keywords where uid is ?", (uidstr,)).fetchall()
-    meta.keywords = set(k[0] for k in keywords)
+    meta.keywords = set(k[0] for k in keywords) if keywords else None
     collections = db.execute("select collection from Metadata_Collections where uid is ?", (uidstr,)).fetchall()
-    meta.collections = set(c[0] for c in collections)
+    meta.collections = set(c[0] for c in collections) if collections else None
 
     return meta
 

@@ -154,6 +154,7 @@ class Meta(metaclass = _Meta):
             if value is None: continue
             if tag.tag_type:
                 # complex value
+                if not value: continue # empty list/set
                 propety = ET.Element(tag.tag_name)
                 elem = ET.Element(tag.tag_type)
                 if tag.tag_type == "{%s}Alt" % RDF_NS:

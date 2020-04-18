@@ -1,15 +1,17 @@
-import sys, random
+import sys, random, atexit
 
 from pathlib import Path
 from threading import Thread
 from queue import LifoQueue
+from copy import deepcopy
+from uuid import UUID
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtGui import QPixmap, QImage, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QScrollBar, QCompleter, QFrame, QHBoxLayout, QSplitter, QLineEdit, QSizePolicy, QPlainTextEdit, QComboBox, QFormLayout
 
 from cutespam.db import picture_file_for_uid, get_all_uids, get_tab_complete_keywords, get_uids_from_keyword_list, get_meta, save_meta
-from cutespam import CuteMeta
+from cutespam.xmpmeta import CuteMeta, Rating
 
 IMG_LOADING = QImage(str(Path(__file__).parent / "image_loading.png"))
 IMG_SIZE = 125
@@ -146,25 +148,40 @@ class MetaViewer(QWidget):
         
         self.setLayout(layout)
 
-    def set_meta(self, meta: CuteMeta):
+    def save_meta(self):
         if self.meta:
-            self.meta.generate_keywords()
-            save_meta(self.meta)
+            meta = deepcopy(self.meta)
+            self.meta.caption = self.caption.toPlainText() or None
+            self.meta.authors = self.authors.text().split(" ") if self.authors.text() else None
+            self.meta.keywords = set(self.keywords.text().split(" ")) if self.keywords.text() else None
+            self.meta.source = self.source.text() or None
+            self.meta.group_id = UUID(self.group_id.text()) if self.group_id.text() else None
+            self.meta.collections = set(self.collections.text().split(" ")) if self.collections.text() else None
+            self.meta.rating = getattr(Rating, self.rating.currentText())
+            self.meta.source_other = set(self.source_other.toPlainText().split("\n")) if self.source_other.toPlainText() else None
+            self.meta.source_via = set(self.source_via.toPlainText().split("\n")) if self.source_via.toPlainText() else None
 
+            if self.meta.as_dict() != meta.as_dict():
+                self.meta.generate_keywords()
+                save_meta(self.meta)
+
+    def set_meta(self, meta: CuteMeta):
+        self.save_meta()
         self.meta = meta
-        self.uid.setText(str(meta.uid if meta.uid else ""))
-        self.hash.setText(meta.hash if meta.hash else "")
-        self.caption.setPlainText(meta.caption if meta.caption else "")
-        self.authors.setText(" ".join(meta.authors if meta.author else []))
-        self.keywords.setText(" ".join(meta.keywords if meta.keywords else []))
-        self.source.setText(meta.source if meta.source else "")
-        self.group_id.setText(str(meta.group_id if meta.group_id else ""))
-        self.collections.setText(" ".join(meta.collections if meta.collections else []))
+        
+        self.uid.setText(str(meta.uid or ""))
+        self.hash.setText(meta.hash or "")
+        self.caption.setPlainText(meta.caption or "")
+        self.authors.setText(" ".join(meta.authors or []))
+        self.keywords.setText(" ".join(meta.keywords or []))
+        self.source.setText(meta.source or "")
+        self.group_id.setText(str(meta.group_id or ""))
+        self.collections.setText(" ".join(meta.collections or []))
         if meta.rating: self.rating.setCurrentText(meta.rating.name)
         else: self.rating.setCurrentIndex(0)
-        self.date.setText(str(meta.date if meta.date else ""))
-        self.source_other.setPlainText("\n".join(meta.source_other if meta.source_other else []))
-        self.source_via.setPlainText("\n".join(meta.source_via if meta.source_via else []))
+        self.date.setText(str(meta.date or ""))
+        self.source_other.setPlainText("\n".join(meta.source_other or []))
+        self.source_via.setPlainText("\n".join(meta.source_via or []))
 
 class PictureViewer(QFrame):
     def __init__(self, parent = None):
@@ -236,6 +253,7 @@ class MainWindow(QMainWindow):
         image_splitter = QSplitter(QtCore.Qt.Vertical, self)
         picture_viewer = PictureViewer(image_splitter)
         meta_viewer = MetaViewer(image_splitter)
+        atexit.register(lambda: meta_viewer.save_meta())
 
         picture_frame = QWidget(main_splitter)
         picture_frame.setLayout(layout)
