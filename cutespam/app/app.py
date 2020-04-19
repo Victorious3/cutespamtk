@@ -30,7 +30,7 @@ class PictureGrid(QWidget):
 
         scrollbar.valueChanged.connect(lambda: self.update())
 
-        self.image_queue = LifoQueue() # TODO Use max size
+        self.image_queue = LifoQueue(20)
 
         def load_images():
             while True:
@@ -50,8 +50,9 @@ class PictureGrid(QWidget):
             if uid: return uid
             return IMG_LOADING
 
-        self.images[uid] = None
-        self.image_queue.put(uid, block = True)
+        if not self.image_queue.full():
+            self.images[uid] = None
+            self.image_queue.put(uid, block = True)
         return IMG_LOADING
 
     def get_selected_uid(self):
