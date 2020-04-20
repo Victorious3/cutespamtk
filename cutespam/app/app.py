@@ -8,7 +8,7 @@ from uuid import UUID
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtGui import QPixmap, QImage, QColor
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QScrollBar, QCompleter, QFrame, QHBoxLayout, QSplitter, QLineEdit, QSizePolicy, QPlainTextEdit, QComboBox, QFormLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QScrollBar, QCompleter, QFrame, QHBoxLayout, QSplitter, QLineEdit, QSizePolicy, QPlainTextEdit, QComboBox, QFormLayout, QVBoxLayout
 
 from cutespam.db import picture_file_for_uid, get_all_uids, get_tab_complete_keywords, get_uids_from_keyword_list, get_meta, save_meta
 from cutespam.xmpmeta import CuteMeta, Rating
@@ -281,9 +281,16 @@ class MainWindow(QMainWindow):
         file.addAction("Import")
 
         search = TagLineEdit(self)
+        search.setFixedWidth(400)
         completer = QCompleter([], search)
         search.setMultipleCompleter(completer)
-        menu.setCornerWidget(search)
+
+        search_container = QWidget()
+        layout = QVBoxLayout(search_container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(search)
+
+        menu.setCornerWidget(search_container)
 
         def on_typed():
             words = search.text().split(" ")
