@@ -122,7 +122,11 @@ class MetaViewer(QWidget):
         self.hash.setDisabled(True)
         self.caption = QPlainTextEdit(self)
         self.authors = QLineEdit(self)
-        self.keywords = QLineEdit(self)
+
+        self.keywords = TagLineEdit(self)
+        completer = QCompleter([], self.keywords)
+        self.keywords.setMultipleCompleter(completer)
+
         self.source = QLineEdit(self)
         self.group_id = QLineEdit(self)
         self.collections = QLineEdit(self)
@@ -216,7 +220,13 @@ class TagLineEdit(QLineEdit):
         super().keyPressEvent(event)
         if not self.multipleCompleter:
             return
+
         c = self.multipleCompleter
+
+        words = self.text().split(" ")
+        last_word = words[-1]
+        c.model().setStringList(get_tab_complete_keywords(last_word))
+        
         if self.text() == "":
             return
         c.setCompletionPrefix(self.cursorWord(self.text()))
@@ -294,8 +304,6 @@ class MainWindow(QMainWindow):
 
         def on_typed():
             words = search.text().split(" ")
-            last_word = words[-1]
-            completer.model().setStringList(get_tab_complete_keywords(last_word))
 
             if len(search.text()) == 0:
                 image_pane.uids = get_all_uids()

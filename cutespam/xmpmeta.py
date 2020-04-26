@@ -115,8 +115,10 @@ class Meta(metaclass = _Meta):
                 if elem is not None:
                     if tag.tag_type == "{%s}Alt" % RDF_NS:
                         value = elem[0][0].text
+                        #if not value: value = None
                     else:
                         value = tag.type(v.text for v in elem[0])
+                        #if len(value) == 1 and not list(value)[0]: value = None
             else:
                 # simple value
                 description = root.find(".//{%s}Description[@%s]" % (RDF_NS, tag.tag_name))
